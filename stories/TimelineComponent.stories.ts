@@ -2,171 +2,10 @@ import type { Meta, StoryObj } from '@storybook/web-components';
 import { html } from 'lit';
 import '../src/index.js';
 
-// Dark theme styles (replicates theme-dark.css for storybook)
-const darkThemeStyles = html`
-  <style>
-    /* Dark Theme via CSS Parts */
-    .timeline-dark-theme timeline-component::part(axis-line) {
-      stroke: #47476b;
-      stroke-width: 2;
-    }
-    .timeline-dark-theme timeline-component::part(connector-line) {
-      stroke: #47476b;
-      stroke-width: 2;
-    }
-    .timeline-dark-theme timeline-component::part(dot) {
-      fill: #ff6b6b;
-    }
-    .timeline-dark-theme timeline-component::part(marker-tick) {
-      stroke: #a4a4c1;
-      stroke-width: 2;
-    }
-    .timeline-dark-theme timeline-component::part(marker-text) {
-      fill: #a4a4c1;
-    }
-    .timeline-dark-theme timeline-event::part(card) {
-      background-color: #2c2c54;
-      border: 1px solid #47476b;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    }
-    .timeline-dark-theme timeline-event::part(image),
-    .timeline-dark-theme timeline-event::part(image-placeholder) {
-      background-color: #3a3a66;
-    }
-    .timeline-dark-theme timeline-event::part(image-placeholder) {
-      color: #b8b8d0;
-    }
-    .timeline-dark-theme timeline-event h3 {
-      color: #ffffff;
-    }
-    .timeline-dark-theme timeline-event p {
-      color: #a4a4c1;
-    }
-  </style>
-`;
-
-// Modern theme styles (replicates theme-modern.css for storybook)
-const modernThemeStyles = html`
-  <style>
-    /* Modern Theme via CSS Parts - Light Glass-morphism */
-    .timeline-modern-theme {
-      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
-      padding: 40px 20px;
-      border-radius: 16px;
-      min-height: 400px;
-    }
-    .timeline-modern-theme timeline-component::part(axis-line) {
-      stroke: #14b8a6;
-      stroke-width: 3;
-    }
-    .timeline-modern-theme timeline-component::part(connector-line) {
-      stroke: #99f6e4;
-      stroke-width: 2;
-      stroke-dasharray: 4 4;
-    }
-    .timeline-modern-theme timeline-component::part(dot) {
-      fill: #14b8a6;
-      filter: drop-shadow(0 0 4px rgba(20, 184, 166, 0.4));
-    }
-    .timeline-modern-theme timeline-component::part(marker-tick) {
-      stroke: #94a3b8;
-      stroke-width: 2;
-    }
-    .timeline-modern-theme timeline-component::part(marker-text) {
-      fill: #64748b;
-      font-weight: 500;
-    }
-    .timeline-modern-theme timeline-event::part(card) {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      border-radius: 20px;
-      box-shadow:
-        0 4px 24px rgba(0, 0, 0, 0.06),
-        0 0 0 1px rgba(255, 255, 255, 0.8) inset;
-    }
-    .timeline-modern-theme timeline-event:hover::part(card),
-    .timeline-modern-theme timeline-event:focus-within::part(card) {
-      border-color: rgba(20, 184, 166, 0.4);
-      box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.1),
-        0 0 0 1px rgba(255, 255, 255, 0.9) inset;
-    }
-    .timeline-modern-theme timeline-event::part(image),
-    .timeline-modern-theme timeline-event::part(image-placeholder) {
-      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-    }
-    .timeline-modern-theme timeline-event::part(image-placeholder) {
-      color: #64748b;
-    }
-    .timeline-modern-theme timeline-event::part(date) {
-      color: #14b8a6;
-    }
-    .timeline-modern-theme timeline-event h3 {
-      color: #0f172a;
-    }
-    .timeline-modern-theme timeline-event p {
-      color: #475569;
-    }
-    .timeline-modern-theme timeline-event:focus {
-      outline: 2px solid #14b8a6;
-      outline-offset: 4px;
-      border-radius: 20px;
-    }
-  </style>
-`;
-
-// Light theme styles (replicates theme-light.css for storybook)
-const lightThemeStyles = html`
-  <style>
-    /* Light Theme via CSS Parts */
-    .timeline-light-theme {
-      background: #f8fafc;
-      padding: 20px;
-      border-radius: 8px;
-    }
-    .timeline-light-theme timeline-component::part(axis-line) {
-      stroke: #94a3b8;
-      stroke-width: 2;
-    }
-    .timeline-light-theme timeline-component::part(connector-line) {
-      stroke: #94a3b8;
-      stroke-width: 2;
-    }
-    .timeline-light-theme timeline-component::part(dot) {
-      fill: #3b82f6;
-    }
-    .timeline-light-theme timeline-component::part(marker-tick) {
-      stroke: #64748b;
-      stroke-width: 2;
-    }
-    .timeline-light-theme timeline-component::part(marker-text) {
-      fill: #64748b;
-    }
-    .timeline-light-theme timeline-event::part(card) {
-      background-color: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    }
-    .timeline-light-theme timeline-event::part(image),
-    .timeline-light-theme timeline-event::part(image-placeholder) {
-      background-color: #f1f5f9;
-    }
-    .timeline-light-theme timeline-event::part(image-placeholder) {
-      color: #64748b;
-    }
-    .timeline-light-theme timeline-event h3 {
-      color: #1e293b;
-    }
-    .timeline-light-theme timeline-event p {
-      color: #475569;
-    }
-  </style>
-`;
+// Import theme CSS files - Vite injects these into the page
+import '../src/styles/theme-dark.css';
+import '../src/styles/theme-light.css';
+import '../src/styles/theme-modern.css';
 
 const meta: Meta = {
   title: 'Components/TimelineComponent',
@@ -228,7 +67,6 @@ export const HorizontalYearly: Story = {
     },
   },
   render: (args) => html`
-    ${darkThemeStyles}
     <div class="timeline-dark-theme">
       <timeline-component
         ?vertical=${args.vertical}
@@ -287,7 +125,6 @@ export const HorizontalMonthly: Story = {
     },
   },
   render: (args) => html`
-    ${darkThemeStyles}
     <div class="timeline-dark-theme">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
@@ -336,7 +173,6 @@ export const Vertical: Story = {
     },
   },
   render: (args) => html`
-    ${darkThemeStyles}
     <div class="timeline-dark-theme">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
@@ -473,7 +309,6 @@ export const LightTheme: Story = {
     },
   },
   render: (args) => html`
-    ${lightThemeStyles}
     <div class="timeline-light-theme">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
@@ -574,7 +409,6 @@ export const Empty: Story = {
     },
   },
   render: (args) => html`
-    ${darkThemeStyles}
     <div class="timeline-dark-theme">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
       </timeline-component>
@@ -597,7 +431,6 @@ export const SingleEvent: Story = {
     },
   },
   render: (args) => html`
-    ${darkThemeStyles}
     <div class="timeline-dark-theme">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event
@@ -628,7 +461,6 @@ export const ModernTheme: Story = {
     },
   },
   render: (args) => html`
-    ${modernThemeStyles}
     <div class="timeline-modern-theme">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
@@ -677,7 +509,6 @@ export const ModernThemeVertical: Story = {
     },
   },
   render: (args) => html`
-    ${modernThemeStyles}
     <div class="timeline-modern-theme">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
@@ -723,14 +554,6 @@ export const ListView: Story = {
     },
   },
   render: (args) => html`
-    ${darkThemeStyles}
-    <style>
-      /* List view specific overrides */
-      .timeline-dark-theme timeline-event::part(date) {
-        color: #ff6b6b;
-        font-weight: 600;
-      }
-    </style>
     <div class="timeline-dark-theme" style="max-width: 700px;">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
@@ -779,7 +602,6 @@ export const ListViewModern: Story = {
     },
   },
   render: (args) => html`
-    ${modernThemeStyles}
     <div class="timeline-modern-theme" style="max-width: 700px;">
       <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
