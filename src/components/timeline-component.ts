@@ -121,6 +121,13 @@ export class TimelineComponent extends LitElement {
     this._initRovingTabindex();
   }
 
+  override updated(changedProperties: Map<string, unknown>): void {
+    // Recalculate layout when vertical or list mode changes
+    if (changedProperties.has('vertical') || changedProperties.has('list')) {
+      this._calculateLayout();
+    }
+  }
+
   /**
    * Initialize roving tabindex pattern for keyboard navigation
    */
