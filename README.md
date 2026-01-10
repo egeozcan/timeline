@@ -4,9 +4,10 @@ A customizable timeline component built with [Lit](https://lit.dev/) for display
 
 ## Features
 
-- **Horizontal and vertical layouts** - Display timelines in either orientation
+- **Multiple layouts** - Horizontal, vertical, and list view modes
 - **Auto date range detection** - Automatically determines timeline bounds from events
-- **CSS custom properties** - Fully customizable appearance through theming
+- **Pre-built themes** - Dark, light, and modern themes included
+- **CSS Parts theming** - Fully customizable appearance through CSS `::part()` selectors
 - **Responsive design** - Scrollable container adapts to different screen sizes
 - **Accessible** - ARIA labels, keyboard navigation, and screen reader support
 - **Lightweight** - Built on Lit with minimal dependencies
@@ -54,6 +55,7 @@ The main container that positions events on a timeline axis.
 | Attribute    | Type    | Default | Description                                         |
 | ------------ | ------- | ------- | --------------------------------------------------- |
 | `vertical`   | boolean | `false` | Display timeline vertically instead of horizontally |
+| `list`       | boolean | `false` | Display as a simple list without timeline axis      |
 | `start-year` | number  | auto    | Override start year for timeline range              |
 | `end-year`   | number  | auto    | Override end year for timeline range                |
 | `label`      | string  | `""`    | Accessible label for the timeline region            |
@@ -75,6 +77,15 @@ The main container that positions events on a timeline axis.
 <timeline-component vertical label="Project phases">
   <timeline-event date="2024-01-01">...</timeline-event>
   <timeline-event date="2024-03-15">...</timeline-event>
+</timeline-component>
+```
+
+**List view (no timeline axis):**
+
+```html
+<timeline-component list label="Event list">
+  <timeline-event date="2024-01-01">...</timeline-event>
+  <timeline-event date="2024-06-15">...</timeline-event>
 </timeline-component>
 ```
 
@@ -126,25 +137,49 @@ Individual event cards displayed on the timeline.
 
 ## Styling
 
-By default, these components have **minimal styling** - only structural/layout CSS is applied. All visual theming (colors, borders, shadows) must be applied via CSS parts.
+By default, these components have **minimal styling** - only structural/layout CSS is applied. All visual theming (colors, borders, shadows) must be applied via CSS parts or pre-built themes.
 
-### Minimal Defaults
+### Pre-built Themes
 
-The components render with no colors, borders, or shadows by default. This allows consumers to apply any theme without needing to override built-in styles.
+Three ready-to-use themes are included:
+
+| Theme  | File               | Description                               |
+| ------ | ------------------ | ----------------------------------------- |
+| Dark   | `theme-dark.css`   | Dark purple background with coral accents |
+| Light  | `theme-light.css`  | Clean light theme with blue accents       |
+| Modern | `theme-modern.css` | Glass-morphism effects with teal accents  |
+
+**Using a theme:**
 
 ```html
-<!-- Unstyled - uses browser defaults for text colors -->
-<timeline-component label="My timeline">
-  <timeline-event date="2024-01-01">
-    <h3>Event Title</h3>
-    <p>Event description</p>
-  </timeline-event>
-</timeline-component>
+<!-- Import the theme CSS -->
+<link rel="stylesheet" href="node_modules/lit-timeline/dist/styles/theme-dark.css" />
+
+<!-- Or with a bundler -->
+<style>
+  @import 'lit-timeline/dist/styles/theme-dark.css';
+</style>
+
+<!-- Wrap your timeline in the theme class -->
+<div class="timeline-dark-theme">
+  <timeline-component label="My timeline">
+    <timeline-event date="2024-01-01">
+      <h3>Event Title</h3>
+      <p>Event description</p>
+    </timeline-event>
+  </timeline-component>
+</div>
 ```
 
-### Applying a Theme
+Each theme uses a wrapper class:
 
-Use CSS parts to apply theming:
+- `.timeline-dark-theme` - Dark theme
+- `.timeline-light-theme` - Light theme
+- `.timeline-modern-theme` - Modern theme
+
+### Custom Themes
+
+Use CSS `::part()` selectors to create custom themes:
 
 ```css
 /* Apply a dark theme */
@@ -184,8 +219,6 @@ timeline-event p {
   color: #a4a4c1;
 }
 ```
-
-A pre-built dark theme is available at `src/styles/theme-dark.css`.
 
 ### CSS Custom Properties
 
@@ -259,6 +292,9 @@ timeline-event::part(image-placeholder) {
 }
 timeline-event::part(content) {
   /* Content area */
+}
+timeline-event::part(date) {
+  /* Date display (shown in list view) */
 }
 ```
 

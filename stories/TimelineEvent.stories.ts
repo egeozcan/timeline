@@ -121,35 +121,3 @@ export const CustomWidth: Story = {
     </div>
   `,
 };
-
-export const Unstyled: Story = {
-  name: 'Unstyled (Minimal Defaults)',
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'Event with no theme applied, showing minimal default styling. A light background is added for visibility since the unstyled components have no colors.',
-      },
-    },
-  },
-  render: () => html`
-    <style>
-      .unstyled-wrapper {
-        background: #f5f5f5;
-        padding: 20px;
-        border-radius: 8px;
-        display: inline-block;
-      }
-      .unstyled-wrapper timeline-event::part(card) {
-        background: #ffffff;
-        border: 1px solid #e0e0e0;
-      }
-    </style>
-    <div class="unstyled-wrapper">
-      <timeline-event date="2024-03-15" style="position: relative; visibility: visible;">
-        <h3>Unstyled Event</h3>
-        <p>This event has no theme applied, showing only structural styling.</p>
-      </timeline-event>
-    </div>
-  `,
-};

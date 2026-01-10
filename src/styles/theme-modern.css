@@ -8,41 +8,53 @@
  *   <link rel="stylesheet" href="theme-modern.css">
  *   or
  *   @import 'lit-timeline/styles/theme-modern.css';
+ *
+ *   <div class="timeline-modern-theme">
+ *     <timeline-component>...</timeline-component>
+ *   </div>
  */
 
+/* Background wrapper */
+.timeline-modern-theme {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
+  padding: 40px 20px;
+  border-radius: 16px;
+  min-height: 400px;
+}
+
 /* Timeline Component */
-timeline-component::part(scroll-wrapper) {
+.timeline-modern-theme timeline-component::part(scroll-wrapper) {
   scrollbar-color: rgba(20, 184, 166, 0.5) transparent;
 }
 
-timeline-component::part(axis-line) {
+.timeline-modern-theme timeline-component::part(axis-line) {
   stroke: #14b8a6;
   stroke-width: 3;
 }
 
-timeline-component::part(connector-line) {
+.timeline-modern-theme timeline-component::part(connector-line) {
   stroke: #99f6e4;
   stroke-width: 2;
   stroke-dasharray: 4 4;
 }
 
-timeline-component::part(dot) {
+.timeline-modern-theme timeline-component::part(dot) {
   fill: #14b8a6;
   filter: drop-shadow(0 0 4px rgba(20, 184, 166, 0.4));
 }
 
-timeline-component::part(marker-tick) {
+.timeline-modern-theme timeline-component::part(marker-tick) {
   stroke: #94a3b8;
   stroke-width: 2;
 }
 
-timeline-component::part(marker-text) {
+.timeline-modern-theme timeline-component::part(marker-text) {
   fill: #64748b;
   font-weight: 500;
 }
 
 /* Timeline Event - Glass-morphism Card */
-timeline-event::part(card) {
+.timeline-modern-theme timeline-event::part(card) {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -54,35 +66,35 @@ timeline-event::part(card) {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-timeline-event:hover::part(card),
-timeline-event:focus-within::part(card) {
+.timeline-modern-theme timeline-event:hover::part(card),
+.timeline-modern-theme timeline-event:focus-within::part(card) {
   border-color: rgba(20, 184, 166, 0.4);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.1),
     0 0 0 1px rgba(255, 255, 255, 0.9) inset;
 }
 
-timeline-event::part(image) {
+.timeline-modern-theme timeline-event::part(image) {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
-timeline-event::part(image-placeholder) {
+.timeline-modern-theme timeline-event::part(image-placeholder) {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   color: #64748b;
   font-weight: 500;
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
-timeline-event::part(date) {
-  color: #14b8a6;
-}
-
-timeline-event::part(content) {
+.timeline-modern-theme timeline-event::part(content) {
   color: #475569;
 }
 
-/* Slotted content styling - must be applied to parent container */
+.timeline-modern-theme timeline-event::part(date) {
+  color: #14b8a6;
+}
+
+/* Slotted content styling */
 .timeline-modern-theme timeline-event h3 {
   color: #0f172a;
 }
@@ -97,12 +109,4 @@ timeline-event::part(content) {
   outline: 2px solid #14b8a6;
   outline-offset: 4px;
   border-radius: 20px;
-}
-
-/* Background wrapper suggestion */
-.timeline-modern-theme {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
-  padding: 40px 20px;
-  border-radius: 16px;
-  min-height: 400px;
 }

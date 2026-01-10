@@ -55,8 +55,8 @@ export const timelineEventStyles = css`
     display: none;
     font-size: var(--timeline-event-date-font-size, 0.85rem);
     font-weight: var(--timeline-event-date-font-weight, 500);
+    color: var(--timeline-event-date-color, currentColor);
     margin-bottom: 8px;
-    opacity: 0.7;
   }
 
   /* Show date in list mode */

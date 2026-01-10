@@ -36,16 +36,6 @@ test.describe('Visual Regression Tests', () => {
       await expect(page.locator('timeline-component')).toHaveScreenshot('timeline-vertical.png');
     });
 
-    test('custom styled view', async ({ page }) => {
-      await page.goto('/iframe.html?id=components-timelinecomponent--custom-styled&viewMode=story');
-      await page.waitForSelector('timeline-component');
-      await page.waitForTimeout(1000);
-
-      await expect(page.locator('timeline-component')).toHaveScreenshot(
-        'timeline-custom-styled.png'
-      );
-    });
-
     test('empty timeline', async ({ page }) => {
       await page.goto('/iframe.html?id=components-timelinecomponent--empty&viewMode=story');
       await page.waitForSelector('timeline-component', { state: 'attached' });
@@ -64,12 +54,14 @@ test.describe('Visual Regression Tests', () => {
       );
     });
 
-    test('unstyled view', async ({ page }) => {
-      await page.goto('/iframe.html?id=components-timelinecomponent--unstyled&viewMode=story');
+    test('list view', async ({ page }) => {
+      await page.goto(
+        '/iframe.html?id=components-timelinecomponent--list-view&viewMode=story&globals=theme:dark'
+      );
       await page.waitForSelector('timeline-component');
       await page.waitForTimeout(1000);
 
-      await expect(page.locator('.unstyled-wrapper')).toHaveScreenshot('timeline-unstyled.png');
+      await expect(page.locator('timeline-component')).toHaveScreenshot('timeline-list-view.png');
     });
   });
 
@@ -127,14 +119,6 @@ test.describe('Visual Regression Tests', () => {
       await page.waitForTimeout(300); // Wait for focus transition
 
       await expect(page.locator('timeline-event')).toHaveScreenshot('event-focus.png');
-    });
-
-    test('unstyled event', async ({ page }) => {
-      await page.goto('/iframe.html?id=components-timelineevent--unstyled&viewMode=story');
-      await page.waitForSelector('timeline-event');
-      await page.waitForTimeout(500);
-
-      await expect(page.locator('.unstyled-wrapper')).toHaveScreenshot('event-unstyled.png');
     });
   });
 

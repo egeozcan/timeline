@@ -2,22 +2,16 @@ import type { Meta, StoryObj } from '@storybook/web-components';
 import { html } from 'lit';
 import '../src/index.js';
 
-// Import theme CSS files - Vite injects these into the page
-import '../src/styles/theme-dark.css';
-import '../src/styles/theme-light.css';
-import '../src/styles/theme-modern.css';
+type DisplayMode = 'horizontal' | 'vertical' | 'list';
 
 const meta: Meta = {
   title: 'Components/TimelineComponent',
   tags: ['autodocs'],
   argTypes: {
-    vertical: {
-      control: 'boolean',
-      description: 'Display timeline vertically',
-    },
-    list: {
-      control: 'boolean',
-      description: 'Display events in a simple list format without timeline axis',
+    display: {
+      control: 'select',
+      options: ['horizontal', 'vertical', 'list'],
+      description: 'Layout mode for the timeline',
     },
     startYear: {
       control: 'number',
@@ -33,27 +27,37 @@ const meta: Meta = {
     },
   },
   args: {
-    vertical: false,
-    list: false,
+    display: 'horizontal' as DisplayMode,
     label: 'Timeline',
   },
   parameters: {
     docs: {
       description: {
         component:
-          'A timeline container component that positions events chronologically on a horizontal or vertical axis. By default, components have minimal styling - use CSS parts to apply themes.',
+          'A timeline container component that positions events chronologically. Use the theme selector in the toolbar to switch between themes.',
       },
     },
   },
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<{
+  display: DisplayMode;
+  startYear?: number;
+  endYear?: number;
+  label: string;
+}>;
+
+// Helper to convert display mode to component props
+const getDisplayProps = (display: DisplayMode) => ({
+  vertical: display === 'vertical',
+  list: display === 'list',
+});
 
 export const HorizontalYearly: Story = {
   name: 'Horizontal Yearly View',
   args: {
-    vertical: false,
+    display: 'horizontal',
     startYear: 1970,
     endYear: 2010,
     label: "A timeline of a teacher's career journey from 1970 to 2010.",
@@ -62,15 +66,16 @@ export const HorizontalYearly: Story = {
     docs: {
       description: {
         story:
-          'A horizontal timeline spanning multiple years with dark theme applied. Shows 5-year markers and is ideal for long-term timelines like career histories.',
+          'A horizontal timeline spanning multiple years. Shows 5-year markers and is ideal for long-term timelines like career histories.',
       },
     },
   },
-  render: (args) => html`
-    <div class="timeline-dark-theme">
+  render: (args) => {
+    const { vertical, list } = getDisplayProps(args.display);
+    return html`
       <timeline-component
-        ?vertical=${args.vertical}
-        ?list=${args.list}
+        ?vertical=${vertical}
+        ?list=${list}
         start-year="${args.startYear}"
         end-year="${args.endYear}"
         label="${args.label}"
@@ -106,14 +111,14 @@ export const HorizontalYearly: Story = {
           <p>Teaching my favorite unit where students were challenged to write poems...</p>
         </timeline-event>
       </timeline-component>
-    </div>
-  `,
+    `;
+  },
 };
 
 export const HorizontalMonthly: Story = {
   name: 'Horizontal Monthly View (Auto-Detected)',
   args: {
-    vertical: false,
+    display: 'horizontal',
     label: 'A timeline of project milestones over a few months.',
   },
   parameters: {
@@ -124,9 +129,10 @@ export const HorizontalMonthly: Story = {
       },
     },
   },
-  render: (args) => html`
-    <div class="timeline-dark-theme">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
+  render: (args) => {
+    const { vertical, list } = getDisplayProps(args.display);
+    return html`
+      <timeline-component ?vertical=${vertical} ?list=${list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -154,14 +160,14 @@ export const HorizontalMonthly: Story = {
           <p>The project is handed over to the client for final user acceptance testing (UAT).</p>
         </timeline-event>
       </timeline-component>
-    </div>
-  `,
+    `;
+  },
 };
 
 export const Vertical: Story = {
   name: 'Vertical View',
   args: {
-    vertical: true,
+    display: 'vertical',
     label: 'A vertical timeline of project milestones.',
   },
   parameters: {
@@ -172,9 +178,10 @@ export const Vertical: Story = {
       },
     },
   },
-  render: (args) => html`
-    <div class="timeline-dark-theme">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
+  render: (args) => {
+    const { vertical, list } = getDisplayProps(args.display);
+    return html`
+      <timeline-component ?vertical=${vertical} ?list=${list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -202,203 +209,67 @@ export const Vertical: Story = {
           <p>The project is handed over to the client for final user acceptance testing (UAT).</p>
         </timeline-event>
       </timeline-component>
-    </div>
-  `,
+    `;
+  },
 };
 
-export const CustomStyled: Story = {
-  name: 'Custom Styled (Orange Theme)',
+export const ListView: Story = {
+  name: 'List View',
   args: {
-    vertical: true,
-    list: false,
-    label: 'A custom-styled vertical timeline.',
+    display: 'list',
+    label: 'A list view of project milestones.',
   },
   parameters: {
     docs: {
       description: {
         story:
-          'A vertical timeline with custom styling using CSS parts. Demonstrates how theming is done purely through ::part() selectors.',
+          'A simple list layout that displays events chronologically without the timeline axis. Shows the event date on each card. Ideal for simpler presentations or responsive designs.',
       },
     },
   },
-  render: (args) => html`
-    <style>
-      /* Custom orange theme via CSS Parts */
-      .custom-styled-timeline timeline-component::part(axis-line) {
-        stroke: #4a5568;
-        stroke-width: 2;
-      }
-      .custom-styled-timeline timeline-component::part(connector-line) {
-        stroke: #4a5568;
-        stroke-width: 2;
-      }
-      .custom-styled-timeline timeline-component::part(dot) {
-        fill: #f6ad55;
-      }
-      .custom-styled-timeline timeline-component::part(marker-tick) {
-        stroke: #a0aec0;
-        stroke-width: 2;
-      }
-      .custom-styled-timeline timeline-component::part(marker-text) {
-        fill: #a0aec0;
-      }
-      .custom-styled-timeline timeline-event::part(card) {
-        background-color: #2d3748;
-        border: 1px solid #4a5568;
-        border-radius: 28px;
-        box-shadow:
-          0 4px 6px -1px rgba(0, 0, 0, 0.4),
-          0 2px 4px -1px rgba(0, 0, 0, 0.2);
-      }
-      .custom-styled-timeline timeline-event::part(image),
-      .custom-styled-timeline timeline-event::part(image-placeholder) {
-        background-color: #3a4a5a;
-      }
-      .custom-styled-timeline timeline-event::part(image) {
-        filter: grayscale(90%);
-        transition: filter 0.3s ease;
-      }
-      .custom-styled-timeline timeline-event:hover::part(image) {
-        filter: grayscale(0%);
-      }
-      .custom-styled-timeline timeline-event h3 {
-        color: #f7fafc;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-      .custom-styled-timeline timeline-event p {
-        color: #e2e8f0;
-      }
-    </style>
-    <div class="custom-styled-timeline">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
-        <timeline-event date="2024-03-15">
-          <h3>Project Kick-off</h3>
-          <p>The initial planning and brainstorming phase for the new company website begins.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Design Mockups Approved</h3>
-          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
-        </timeline-event>
-        <timeline-event date="2024-05-28">
-          <h3>Development Sprint 1</h3>
-          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
-        </timeline-event>
-      </timeline-component>
-    </div>
-  `,
-};
-
-export const LightTheme: Story = {
-  name: 'Light Theme',
-  args: {
-    vertical: false,
-    list: false,
-    label: 'A light-themed timeline.',
+  render: (args) => {
+    const { vertical, list } = getDisplayProps(args.display);
+    return html`
+      <div style="max-width: 700px;">
+        <timeline-component ?vertical=${vertical} ?list=${list} label="${args.label}">
+          <timeline-event date="2024-03-15">
+            <h3>Project Kick-off</h3>
+            <p>The initial planning and brainstorming phase for the new company website begins.</p>
+          </timeline-event>
+          <timeline-event
+            date="2024-05-22"
+            image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
+          >
+            <h3>Design Mockups Approved</h3>
+            <p>
+              After several iterations, the design team gets final approval on the UI/UX mockups.
+            </p>
+          </timeline-event>
+          <timeline-event date="2024-05-28">
+            <h3>Development Sprint 1</h3>
+            <p>First development sprint starts, focusing on the core architecture and homepage.</p>
+          </timeline-event>
+          <timeline-event
+            date="2024-07-01"
+            image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
+          >
+            <h3>Alpha Version Deployed</h3>
+            <p>An internal alpha version is deployed for testing and feedback from the team.</p>
+          </timeline-event>
+          <timeline-event date="2024-09-10">
+            <h3>User Acceptance Testing</h3>
+            <p>The project is handed over to the client for final user acceptance testing (UAT).</p>
+          </timeline-event>
+        </timeline-component>
+      </div>
+    `;
   },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'A timeline with the light theme applied via CSS parts. Ideal for light-background applications.',
-      },
-    },
-  },
-  render: (args) => html`
-    <div class="timeline-light-theme">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
-        <timeline-event date="2024-03-15">
-          <h3>Project Kick-off</h3>
-          <p>The initial planning and brainstorming phase for the new company website begins.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Design Mockups Approved</h3>
-          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
-        </timeline-event>
-        <timeline-event date="2024-05-28">
-          <h3>Development Sprint 1</h3>
-          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
-        </timeline-event>
-      </timeline-component>
-    </div>
-  `,
-};
-
-export const Unstyled: Story = {
-  name: 'Unstyled (Minimal Defaults)',
-  args: {
-    vertical: false,
-    list: false,
-    label: 'An unstyled timeline showing minimal defaults.',
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'Timeline with no theme applied, showing minimal default styling. This demonstrates the base appearance that consumers can style via CSS parts. Note: A light background is added here for visibility since the default unstyled components have no colors.',
-      },
-    },
-  },
-  render: (args) => html`
-    <style>
-      /* Light background wrapper for unstyled visibility */
-      .unstyled-wrapper {
-        background: #f5f5f5;
-        padding: 20px;
-        border-radius: 8px;
-      }
-      .unstyled-wrapper timeline-event::part(card) {
-        background: #ffffff;
-        border: 1px solid #e0e0e0;
-      }
-      .unstyled-wrapper timeline-component::part(axis-line),
-      .unstyled-wrapper timeline-component::part(connector-line) {
-        stroke: #999;
-      }
-      .unstyled-wrapper timeline-component::part(dot) {
-        fill: #666;
-      }
-      .unstyled-wrapper timeline-component::part(marker-tick) {
-        stroke: #999;
-      }
-      .unstyled-wrapper timeline-component::part(marker-text) {
-        fill: #666;
-      }
-    </style>
-    <div class="unstyled-wrapper">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
-        <timeline-event date="2024-03-15">
-          <h3>Project Kick-off</h3>
-          <p>The initial planning and brainstorming phase for the new company website begins.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Design Mockups Approved</h3>
-          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
-        </timeline-event>
-        <timeline-event date="2024-05-28">
-          <h3>Development Sprint 1</h3>
-          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
-        </timeline-event>
-      </timeline-component>
-    </div>
-  `,
 };
 
 export const Empty: Story = {
   name: 'Empty Timeline',
   args: {
-    vertical: false,
-    list: false,
+    display: 'horizontal',
     label: 'An empty timeline.',
   },
   parameters: {
@@ -408,19 +279,19 @@ export const Empty: Story = {
       },
     },
   },
-  render: (args) => html`
-    <div class="timeline-dark-theme">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
+  render: (args) => {
+    const { vertical, list } = getDisplayProps(args.display);
+    return html`
+      <timeline-component ?vertical=${vertical} ?list=${list} label="${args.label}">
       </timeline-component>
-    </div>
-  `,
+    `;
+  },
 };
 
 export const SingleEvent: Story = {
   name: 'Single Event',
   args: {
-    vertical: false,
-    list: false,
+    display: 'horizontal',
     label: 'A timeline with a single event.',
   },
   parameters: {
@@ -430,9 +301,10 @@ export const SingleEvent: Story = {
       },
     },
   },
-  render: (args) => html`
-    <div class="timeline-dark-theme">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
+  render: (args) => {
+    const { vertical, list } = getDisplayProps(args.display);
+    return html`
+      <timeline-component ?vertical=${vertical} ?list=${list} label="${args.label}">
         <timeline-event
           date="2024-06-15"
           image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
@@ -441,192 +313,6 @@ export const SingleEvent: Story = {
           <p>Our product finally launches to the public after months of development.</p>
         </timeline-event>
       </timeline-component>
-    </div>
-  `,
-};
-
-export const ModernTheme: Story = {
-  name: 'Modern Theme',
-  args: {
-    vertical: false,
-    list: false,
-    label: 'A modern-themed timeline.',
+    `;
   },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'A timeline with the modern glass-morphism theme featuring a light background, blur effects, and teal accents.',
-      },
-    },
-  },
-  render: (args) => html`
-    <div class="timeline-modern-theme">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
-        <timeline-event date="2024-03-15">
-          <h3>Project Kick-off</h3>
-          <p>The initial planning and brainstorming phase for the new company website begins.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Design Mockups Approved</h3>
-          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
-        </timeline-event>
-        <timeline-event date="2024-05-28">
-          <h3>Development Sprint 1</h3>
-          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-07-01"
-          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Alpha Version Deployed</h3>
-          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
-        </timeline-event>
-        <timeline-event date="2024-09-10">
-          <h3>User Acceptance Testing</h3>
-          <p>The project is handed over to the client for final user acceptance testing (UAT).</p>
-        </timeline-event>
-      </timeline-component>
-    </div>
-  `,
-};
-
-export const ModernThemeVertical: Story = {
-  name: 'Modern Theme (Vertical)',
-  args: {
-    vertical: true,
-    list: false,
-    label: 'A modern-themed vertical timeline.',
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'The modern glass-morphism theme applied to a vertical timeline layout.',
-      },
-    },
-  },
-  render: (args) => html`
-    <div class="timeline-modern-theme">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
-        <timeline-event date="2024-03-15">
-          <h3>Project Kick-off</h3>
-          <p>The initial planning and brainstorming phase for the new company website begins.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Design Mockups Approved</h3>
-          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
-        </timeline-event>
-        <timeline-event date="2024-05-28">
-          <h3>Development Sprint 1</h3>
-          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-07-01"
-          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Alpha Version Deployed</h3>
-          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
-        </timeline-event>
-      </timeline-component>
-    </div>
-  `,
-};
-
-export const ListView: Story = {
-  name: 'List View',
-  args: {
-    vertical: false,
-    list: true,
-    label: 'A list view of project milestones.',
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'A simple list layout that displays events chronologically without the timeline axis. Ideal for simpler presentations or responsive designs.',
-      },
-    },
-  },
-  render: (args) => html`
-    <div class="timeline-dark-theme" style="max-width: 700px;">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
-        <timeline-event date="2024-03-15">
-          <h3>Project Kick-off</h3>
-          <p>The initial planning and brainstorming phase for the new company website begins.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Design Mockups Approved</h3>
-          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
-        </timeline-event>
-        <timeline-event date="2024-05-28">
-          <h3>Development Sprint 1</h3>
-          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-07-01"
-          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Alpha Version Deployed</h3>
-          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
-        </timeline-event>
-        <timeline-event date="2024-09-10">
-          <h3>User Acceptance Testing</h3>
-          <p>The project is handed over to the client for final user acceptance testing (UAT).</p>
-        </timeline-event>
-      </timeline-component>
-    </div>
-  `,
-};
-
-export const ListViewModern: Story = {
-  name: 'List View (Modern Theme)',
-  args: {
-    vertical: false,
-    list: true,
-    label: 'A modern-themed list view.',
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'The list view layout with the modern glass-morphism theme applied.',
-      },
-    },
-  },
-  render: (args) => html`
-    <div class="timeline-modern-theme" style="max-width: 700px;">
-      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
-        <timeline-event date="2024-03-15">
-          <h3>Project Kick-off</h3>
-          <p>The initial planning and brainstorming phase for the new company website begins.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Design Mockups Approved</h3>
-          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
-        </timeline-event>
-        <timeline-event date="2024-05-28">
-          <h3>Development Sprint 1</h3>
-          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
-        </timeline-event>
-        <timeline-event
-          date="2024-07-01"
-          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
-          <h3>Alpha Version Deployed</h3>
-          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
-        </timeline-event>
-      </timeline-component>
-    </div>
-  `,
 };

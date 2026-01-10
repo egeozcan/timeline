@@ -6,8 +6,10 @@ This document provides detailed instructions for AI agents working with the `lit
 
 `lit-timeline` is an npm package providing customizable timeline components built with [Lit](https://lit.dev/). It includes two web components:
 
-- `<timeline-component>` - Main container that positions events on a horizontal or vertical timeline axis
+- `<timeline-component>` - Main container that positions events on a horizontal, vertical, or list layout
 - `<timeline-event>` - Individual event cards with optional images, displayed on the timeline
+
+Pre-built CSS themes are included: dark, light, and modern.
 
 ## Technology Stack
 
@@ -27,9 +29,12 @@ lit-timeline/
 │   │   ├── timeline-event.ts     # Event card component
 │   │   ├── timeline-component.ts # Main timeline container
 │   │   └── index.ts              # Component exports
-│   ├── styles/                   # CSS-in-JS styles (Lit css tagged templates)
+│   ├── styles/                   # CSS-in-JS styles and theme files
 │   │   ├── timeline-event.styles.ts
-│   │   └── timeline-component.styles.ts
+│   │   ├── timeline-component.styles.ts
+│   │   ├── theme-dark.css        # Dark theme (purple with coral accents)
+│   │   ├── theme-light.css       # Light theme (blue accents)
+│   │   └── theme-modern.css      # Modern theme (glass-morphism, teal)
 │   ├── types/                    # TypeScript interfaces
 │   │   └── index.ts
 │   ├── utils/                    # Utility functions
@@ -189,6 +194,7 @@ export const WithImage: StoryObj = {
 **Attributes:**
 
 - `vertical` (boolean) - Display vertically instead of horizontally
+- `list` (boolean) - Display as simple list without timeline axis
 - `start-year` (number) - Override timeline start year
 - `end-year` (number) - Override timeline end year
 - `label` (string) - Accessible label for the timeline region
@@ -227,18 +233,27 @@ export const WithImage: StoryObj = {
 - `image` - Event image
 - `image-placeholder` - Placeholder when no image
 - `content` - Content area
+- `date` - Date display (shown in list view)
 
 ## Architecture Notes
 
 ### Layout Algorithm
 
-The `TimelineComponent` uses a layout algorithm that:
+The `TimelineComponent` uses different layout algorithms based on mode:
+
+**Horizontal/Vertical modes:**
 
 1. Collects all `<timeline-event>` children and their dimensions
 2. Sorts events by date
 3. Positions events to avoid overlap using a row/column packing algorithm
 4. Generates SVG for axis, connectors, dots, and date markers
 5. Uses ResizeObserver to recalculate on container resize
+
+**List mode:**
+
+1. Displays events in a simple vertical list using flexbox
+2. Shows formatted date on each event card
+3. No timeline axis or SVG decorations
 
 ### Date Handling
 
@@ -253,6 +268,10 @@ const date = new Date(dateString + 'T12:00:00Z');
 - Styles are defined in separate files (`src/styles/*.styles.ts`) using Lit's `css` tagged template
 - Components use CSS custom properties for theming
 - External styling is enabled via CSS `::part()` selectors
+- Pre-built themes in `src/styles/theme-*.css` use wrapper class scoping:
+  - `.timeline-dark-theme` - Dark theme
+  - `.timeline-light-theme` - Light theme
+  - `.timeline-modern-theme` - Modern glass-morphism theme
 
 ## Known Issues & Workarounds
 
@@ -278,3 +297,4 @@ The package exports:
 
 - Main entry: `lit-timeline` → `dist/index.js`
 - Individual components: `lit-timeline/timeline-event.js`, `lit-timeline/timeline-component.js`
+- Theme CSS files: `lit-timeline/dist/styles/theme-dark.css`, `theme-light.css`, `theme-modern.css`
