@@ -156,16 +156,34 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test.describe('Theming', () => {
-    test('light background', async ({ page }) => {
+    test('dark theme', async ({ page }) => {
       await page.goto(
-        '/iframe.html?id=components-timelinecomponent--horizontal-monthly&viewMode=story&globals=backgrounds.value:!hex(ffffff)'
+        '/iframe.html?id=components-timelinecomponent--horizontal-monthly&viewMode=story&globals=theme:dark'
       );
       await page.waitForSelector('timeline-component');
       await page.waitForTimeout(1000);
 
-      await expect(page.locator('timeline-component')).toHaveScreenshot(
-        'timeline-light-background.png'
+      await expect(page.locator('.timeline-dark-theme')).toHaveScreenshot('theme-dark.png');
+    });
+
+    test('light theme', async ({ page }) => {
+      await page.goto(
+        '/iframe.html?id=components-timelinecomponent--horizontal-monthly&viewMode=story&globals=theme:light'
       );
+      await page.waitForSelector('timeline-component');
+      await page.waitForTimeout(1000);
+
+      await expect(page.locator('.timeline-light-theme')).toHaveScreenshot('theme-light.png');
+    });
+
+    test('modern theme', async ({ page }) => {
+      await page.goto(
+        '/iframe.html?id=components-timelinecomponent--horizontal-monthly&viewMode=story&globals=theme:modern'
+      );
+      await page.waitForSelector('timeline-component');
+      await page.waitForTimeout(1000);
+
+      await expect(page.locator('.timeline-modern-theme')).toHaveScreenshot('theme-modern.png');
     });
   });
 });

@@ -12,6 +12,20 @@ A customizable timeline component built with [Lit](https://lit.dev/) for display
 - **Accessible** - ARIA labels, keyboard navigation, and screen reader support
 - **Lightweight** - Built on Lit with minimal dependencies
 
+## Screenshots
+
+### Dark Theme
+
+![Dark Theme](test/visual/__snapshots__/visual.spec.ts/chromium/theme-dark.png)
+
+### Light Theme
+
+![Light Theme](test/visual/__snapshots__/visual.spec.ts/chromium/theme-light.png)
+
+### Modern Theme
+
+![Modern Theme](test/visual/__snapshots__/visual.spec.ts/chromium/theme-modern.png)
+
 ## Installation
 
 ```bash
