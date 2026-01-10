@@ -2,6 +2,15 @@
   "name": "lit-timeline",
   "version": "1.0.0",
   "description": "A customizable timeline component built with Lit for displaying chronological events",
+  "author": "egecan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/egecan/lit-timeline.git"
+  },
+  "homepage": "https://egecan.github.io/lit-timeline",
+  "bugs": {
+    "url": "https://github.com/egecan/lit-timeline/issues"
+  },
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
