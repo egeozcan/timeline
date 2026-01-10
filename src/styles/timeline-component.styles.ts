@@ -31,6 +31,19 @@ export const timelineComponentStyles = css`
     min-height: 100px;
   }
 
+  /* List view styles */
+  .timeline-container.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--timeline-list-gap, 16px);
+    padding: var(--timeline-list-padding, 20px);
+  }
+
+  .scroll-wrapper.list-mode {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .svg-layer {
     position: absolute;
     top: 0;

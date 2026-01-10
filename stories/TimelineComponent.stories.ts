@@ -46,6 +46,86 @@ const darkThemeStyles = html`
   </style>
 `;
 
+// Modern theme styles (replicates theme-modern.css for storybook)
+const modernThemeStyles = html`
+  <style>
+    /* Modern Theme via CSS Parts - Glass-morphism */
+    .timeline-modern-theme {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      padding: 40px 20px;
+      border-radius: 16px;
+      min-height: 400px;
+    }
+    .timeline-modern-theme timeline-component::part(axis-line) {
+      stroke: #8b5cf6;
+      stroke-width: 3;
+      filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
+    }
+    .timeline-modern-theme timeline-component::part(connector-line) {
+      stroke: rgba(139, 92, 246, 0.4);
+      stroke-width: 2;
+      stroke-dasharray: 4 4;
+    }
+    .timeline-modern-theme timeline-component::part(dot) {
+      fill: #a78bfa;
+      filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.8));
+    }
+    .timeline-modern-theme timeline-component::part(marker-tick) {
+      stroke: rgba(139, 92, 246, 0.6);
+      stroke-width: 2;
+    }
+    .timeline-modern-theme timeline-component::part(marker-text) {
+      fill: #a5b4fc;
+      font-weight: 500;
+    }
+    .timeline-modern-theme timeline-event::part(card) {
+      background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(49, 46, 129, 0.6) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 20px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(139, 92, 246, 0.1) inset,
+        0 0 80px -20px rgba(139, 92, 246, 0.3);
+    }
+    .timeline-modern-theme timeline-event:hover::part(card),
+    .timeline-modern-theme timeline-event:focus-within::part(card) {
+      border-color: rgba(167, 139, 250, 0.6);
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(167, 139, 250, 0.2) inset,
+        0 0 100px -10px rgba(139, 92, 246, 0.4);
+    }
+    .timeline-modern-theme timeline-event::part(image),
+    .timeline-modern-theme timeline-event::part(image-placeholder) {
+      background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    .timeline-modern-theme timeline-event::part(image-placeholder) {
+      color: #818cf8;
+    }
+    .timeline-modern-theme timeline-event::part(date) {
+      color: #a5b4fc;
+    }
+    .timeline-modern-theme timeline-event h3 {
+      color: #f8fafc;
+      background: linear-gradient(90deg, #f8fafc 0%, #c7d2fe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .timeline-modern-theme timeline-event p {
+      color: #a5b4fc;
+    }
+    .timeline-modern-theme timeline-event:focus {
+      outline: 2px solid #a78bfa;
+      outline-offset: 4px;
+      border-radius: 20px;
+    }
+  </style>
+`;
+
 // Light theme styles (replicates theme-light.css for storybook)
 const lightThemeStyles = html`
   <style>
@@ -103,6 +183,10 @@ const meta: Meta = {
       control: 'boolean',
       description: 'Display timeline vertically',
     },
+    list: {
+      control: 'boolean',
+      description: 'Display events in a simple list format without timeline axis',
+    },
     startYear: {
       control: 'number',
       description: 'Override start year for timeline range',
@@ -118,6 +202,7 @@ const meta: Meta = {
   },
   args: {
     vertical: false,
+    list: false,
     label: 'Timeline',
   },
   parameters: {
@@ -501,6 +586,187 @@ export const SingleEvent: Story = {
         >
           <h3>The Big Launch</h3>
           <p>Our product finally launches to the public after months of development.</p>
+        </timeline-event>
+      </timeline-component>
+    </div>
+  `,
+};
+
+export const ModernTheme: Story = {
+  name: 'Modern Theme',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A timeline with the modern glass-morphism theme featuring gradients, blur effects, and a vibrant purple color palette.',
+      },
+    },
+  },
+  render: () => html`
+    ${modernThemeStyles}
+    <div class="timeline-modern-theme">
+      <timeline-component label="A modern-themed timeline.">
+        <timeline-event date="2024-03-15">
+          <h3>Project Kick-off</h3>
+          <p>The initial planning and brainstorming phase for the new company website begins.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-05-22"
+          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Design Mockups Approved</h3>
+          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
+        </timeline-event>
+        <timeline-event date="2024-05-28">
+          <h3>Development Sprint 1</h3>
+          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-07-01"
+          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Alpha Version Deployed</h3>
+          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
+        </timeline-event>
+        <timeline-event date="2024-09-10">
+          <h3>User Acceptance Testing</h3>
+          <p>The project is handed over to the client for final user acceptance testing (UAT).</p>
+        </timeline-event>
+      </timeline-component>
+    </div>
+  `,
+};
+
+export const ModernThemeVertical: Story = {
+  name: 'Modern Theme (Vertical)',
+  parameters: {
+    docs: {
+      description: {
+        story: 'The modern glass-morphism theme applied to a vertical timeline layout.',
+      },
+    },
+  },
+  render: () => html`
+    ${modernThemeStyles}
+    <div class="timeline-modern-theme">
+      <timeline-component vertical label="A modern-themed vertical timeline.">
+        <timeline-event date="2024-03-15">
+          <h3>Project Kick-off</h3>
+          <p>The initial planning and brainstorming phase for the new company website begins.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-05-22"
+          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Design Mockups Approved</h3>
+          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
+        </timeline-event>
+        <timeline-event date="2024-05-28">
+          <h3>Development Sprint 1</h3>
+          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-07-01"
+          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Alpha Version Deployed</h3>
+          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
+        </timeline-event>
+      </timeline-component>
+    </div>
+  `,
+};
+
+export const ListView: Story = {
+  name: 'List View',
+  args: {
+    list: true,
+    label: 'A list view of project milestones.',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A simple list layout that displays events chronologically without the timeline axis. Ideal for simpler presentations or responsive designs.',
+      },
+    },
+  },
+  render: (args) => html`
+    ${darkThemeStyles}
+    <style>
+      /* List view specific overrides */
+      .timeline-dark-theme timeline-event::part(date) {
+        color: #ff6b6b;
+        font-weight: 600;
+      }
+    </style>
+    <div class="timeline-dark-theme" style="max-width: 700px;">
+      <timeline-component ?list=${args.list} label="${args.label}">
+        <timeline-event date="2024-03-15">
+          <h3>Project Kick-off</h3>
+          <p>The initial planning and brainstorming phase for the new company website begins.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-05-22"
+          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Design Mockups Approved</h3>
+          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
+        </timeline-event>
+        <timeline-event date="2024-05-28">
+          <h3>Development Sprint 1</h3>
+          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-07-01"
+          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Alpha Version Deployed</h3>
+          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
+        </timeline-event>
+        <timeline-event date="2024-09-10">
+          <h3>User Acceptance Testing</h3>
+          <p>The project is handed over to the client for final user acceptance testing (UAT).</p>
+        </timeline-event>
+      </timeline-component>
+    </div>
+  `,
+};
+
+export const ListViewModern: Story = {
+  name: 'List View (Modern Theme)',
+  parameters: {
+    docs: {
+      description: {
+        story: 'The list view layout with the modern glass-morphism theme applied.',
+      },
+    },
+  },
+  render: () => html`
+    ${modernThemeStyles}
+    <div class="timeline-modern-theme" style="max-width: 700px;">
+      <timeline-component list label="A modern-themed list view.">
+        <timeline-event date="2024-03-15">
+          <h3>Project Kick-off</h3>
+          <p>The initial planning and brainstorming phase for the new company website begins.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-05-22"
+          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Design Mockups Approved</h3>
+          <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
+        </timeline-event>
+        <timeline-event date="2024-05-28">
+          <h3>Development Sprint 1</h3>
+          <p>First development sprint starts, focusing on the core architecture and homepage.</p>
+        </timeline-event>
+        <timeline-event
+          date="2024-07-01"
+          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
+        >
+          <h3>Alpha Version Deployed</h3>
+          <p>An internal alpha version is deployed for testing and feedback from the team.</p>
         </timeline-event>
       </timeline-component>
     </div>

@@ -13,6 +13,12 @@ export const timelineEventStyles = css`
       box-shadow 0.3s ease;
   }
 
+  /* List view - when position is relative (set by parent) */
+  :host([style*='position: relative']) {
+    width: 100%;
+    max-width: var(--timeline-list-event-max-width, 600px);
+  }
+
   :host(:hover),
   :host(:focus-within) {
     z-index: 10;
@@ -43,6 +49,19 @@ export const timelineEventStyles = css`
     padding: var(--timeline-event-content-padding, 20px);
     min-height: var(--timeline-event-content-min-height, 125px);
     box-sizing: border-box;
+  }
+
+  .date-display {
+    display: none;
+    font-size: var(--timeline-event-date-font-size, 0.85rem);
+    font-weight: var(--timeline-event-date-font-weight, 500);
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+
+  /* Show date in list mode */
+  :host([style*='position: relative']) .date-display {
+    display: block;
   }
 
   ::slotted(h3) {

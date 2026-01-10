@@ -42,6 +42,8 @@ interface DateRangeData {
  * @cssprop [--timeline-v-column-gap=100px] - Horizontal gap between columns (vertical mode)
  * @cssprop [--timeline-scrollbar-thumb-color=#47476b] - Scrollbar thumb color
  * @cssprop [--timeline-scrollbar-track-color=transparent] - Scrollbar track color
+ * @cssprop [--timeline-list-gap=16px] - Gap between events in list mode
+ * @cssprop [--timeline-list-padding=20px] - Padding inside the container in list mode
  */
 @customElement('timeline-component')
 export class TimelineComponent extends LitElement {
@@ -66,6 +68,13 @@ export class TimelineComponent extends LitElement {
    */
   @property({ type: Boolean })
   vertical = false;
+
+  /**
+   * Display events in a simple list format without timeline axis.
+   * Overrides vertical/horizontal layout when enabled.
+   */
+  @property({ type: Boolean })
+  list = false;
 
   /**
    * Accessible label for the timeline region.
@@ -151,7 +160,8 @@ export class TimelineComponent extends LitElement {
     }
 
     let newIndex = currentIndex;
-    const isHorizontal = !this.vertical;
+    const isHorizontal = !this.vertical && !this.list;
+    const isVerticalNav = this.vertical || this.list;
 
     switch (event.key) {
       case 'ArrowRight':
@@ -165,12 +175,12 @@ export class TimelineComponent extends LitElement {
         }
         break;
       case 'ArrowDown':
-        if (this.vertical) {
+        if (isVerticalNav) {
           newIndex = Math.min(currentIndex + 1, events.length - 1);
         }
         break;
       case 'ArrowUp':
-        if (this.vertical) {
+        if (isVerticalNav) {
           newIndex = Math.max(currentIndex - 1, 0);
         }
         break;
@@ -208,11 +218,57 @@ export class TimelineComponent extends LitElement {
   }
 
   private _calculateLayout(): void {
-    if (this.vertical) {
+    if (this.list) {
+      this._calculateListLayout();
+    } else if (this.vertical) {
       this._calculateVerticalLayout();
     } else {
       this._calculateHorizontalLayout();
     }
+  }
+
+  private _calculateListLayout(): void {
+    const container = this.shadowRoot?.querySelector('.timeline-container') as HTMLElement;
+    if (!container) {
+      return;
+    }
+
+    // Reset container sizing for list mode
+    container.style.minWidth = '';
+    container.style.minHeight = '';
+    container.style.height = '';
+    container.style.width = '';
+
+    const events = Array.from(this.querySelectorAll('timeline-event'));
+    if (events.length === 0) {
+      return;
+    }
+
+    // Sort events by date
+    const sortedEvents = events
+      .map((el) => ({
+        el,
+        date: el.date,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+      }))
+      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+
+    // In list mode, we just need to track events for keyboard navigation
+    // Positioning is handled by CSS flexbox/grid
+    this._eventLayouts = sortedEvents.map((event) => ({
+      ...event,
+      x: 0,
+      y: 0,
+    }));
+
+    // Clear SVG data for list mode (no axis/connectors)
+    this._svgData = {
+      axisPath: '',
+      connectors: [],
+      dots: [],
+      markers: [],
+    };
   }
 
   /**
@@ -530,38 +586,52 @@ export class TimelineComponent extends LitElement {
   override render() {
     // Apply calculated positions to timeline events after render
     this.updateComplete.then(() => {
-      this._eventLayouts.forEach((layout) => {
-        layout.el.style.left = `${layout.x}px`;
-        layout.el.style.top = `${layout.y}px`;
-        layout.el.style.visibility = 'visible';
-      });
+      if (this.list) {
+        // In list mode, reset absolute positioning and make visible
+        this._eventLayouts.forEach((layout) => {
+          layout.el.style.position = 'relative';
+          layout.el.style.left = '';
+          layout.el.style.top = '';
+          layout.el.style.visibility = 'visible';
+        });
+      } else {
+        this._eventLayouts.forEach((layout) => {
+          layout.el.style.position = 'absolute';
+          layout.el.style.left = `${layout.x}px`;
+          layout.el.style.top = `${layout.y}px`;
+          layout.el.style.visibility = 'visible';
+        });
+      }
     });
 
     const dotRadius = getComputedStyle(this).getPropertyValue('--timeline-dot-size') || '5';
+    const containerClass = this.list ? 'timeline-container list-view' : 'timeline-container';
 
     return html`
       <div
-        class="scroll-wrapper"
+        class="scroll-wrapper${this.list ? ' list-mode' : ''}"
         part="scroll-wrapper"
         role="region"
         aria-label="${this.label}"
         tabindex="0"
       >
-        <div class="timeline-container" part="container">
+        <div class="${containerClass}" part="container">
           <slot></slot>
 
-          <svg class="svg-layer" part="svg-layer" aria-hidden="true">
-            <!-- Timeline axis -->
-            <path
-              d="${this._svgData.axisPath}"
-              stroke="var(--timeline-axis-color)"
-              stroke-width="var(--timeline-axis-width, 2)"
-              part="axis-line"
-            />
+          ${this.list
+            ? ''
+            : html`<svg class="svg-layer" part="svg-layer" aria-hidden="true">
+                <!-- Timeline axis -->
+                <path
+                  d="${this._svgData.axisPath}"
+                  stroke="var(--timeline-axis-color)"
+                  stroke-width="var(--timeline-axis-width, 2)"
+                  part="axis-line"
+                />
 
-            <!-- Event connectors -->
-            ${this._svgData.connectors.map(
-              (pathData) => svg`
+                <!-- Event connectors -->
+                ${this._svgData.connectors.map(
+                  (pathData) => svg`
               <path
                 d="${pathData}"
                 stroke="var(--timeline-connector-color)"
@@ -570,11 +640,11 @@ export class TimelineComponent extends LitElement {
                 part="connector-line"
               ></path>
             `
-            )}
+                )}
 
-            <!-- Timeline markers -->
-            ${this._svgData.markers.map(
-              (m) => svg`
+                <!-- Timeline markers -->
+                ${this._svgData.markers.map(
+                  (m) => svg`
               <line
                 x1="${m.line.x1}"
                 y1="${m.line.y1}"
@@ -592,11 +662,11 @@ export class TimelineComponent extends LitElement {
                 part="marker-text"
               >${m.text.content}</text>
             `
-            )}
+                )}
 
-            <!-- Event dots -->
-            ${this._svgData.dots.map(
-              (dot) => svg`
+                <!-- Event dots -->
+                ${this._svgData.dots.map(
+                  (dot) => svg`
               <circle
                 cx="${dot.cx}"
                 cy="${dot.cy}"
@@ -605,8 +675,8 @@ export class TimelineComponent extends LitElement {
                 part="dot"
               />
             `
-            )}
-          </svg>
+                )}
+              </svg>`}
         </div>
       </div>
     `;

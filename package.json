@@ -18,10 +18,14 @@
     "./timeline-component.js": {
       "types": "./dist/components/timeline-component.d.ts",
       "default": "./dist/components/timeline-component.js"
-    }
+    },
+    "./styles/theme-light.css": "./src/styles/theme-light.css",
+    "./styles/theme-dark.css": "./src/styles/theme-dark.css",
+    "./styles/theme-modern.css": "./src/styles/theme-modern.css"
   },
   "files": [
     "dist",
+    "src/styles/*.css",
     "custom-elements.json"
   ],
   "customElements": "custom-elements.json",

@@ -12,6 +12,7 @@ import { formatDate } from '../utils/date-utils.js';
  * @csspart image - The event image element
  * @csspart image-placeholder - The placeholder shown when no image is provided
  * @csspart content - The content container below the image
+ * @csspart date - The date display element (visible in list mode)
  *
  * @cssprop [--timeline-event-width=250px] - Width of the event card
  * @cssprop [--timeline-event-bg-color=#2c2c54] - Background color of the card
@@ -29,6 +30,9 @@ import { formatDate } from '../utils/date-utils.js';
  * @cssprop [--timeline-event-placeholder-bg=#3a3a66] - Background of image placeholder
  * @cssprop [--timeline-event-placeholder-color=#8c8caf] - Text color of placeholder
  * @cssprop [--timeline-event-focus-offset=4px] - Focus outline offset
+ * @cssprop [--timeline-event-date-font-size=0.85rem] - Font size of the date display
+ * @cssprop [--timeline-event-date-font-weight=500] - Font weight of the date display
+ * @cssprop [--timeline-list-event-max-width=600px] - Maximum width of event cards in list mode
  */
 @customElement('timeline-event')
 export class TimelineEvent extends LitElement {
@@ -77,6 +81,7 @@ export class TimelineEvent extends LitElement {
             </div>`}
 
         <div class="content" part="content">
+          <time class="date-display" datetime="${this.date}" part="date"> ${formattedDate} </time>
           <slot></slot>
         </div>
       </div>
