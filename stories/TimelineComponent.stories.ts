@@ -116,6 +116,10 @@ const meta: Meta = {
       description: 'Accessible label for the timeline',
     },
   },
+  args: {
+    vertical: false,
+    label: 'Timeline',
+  },
   parameters: {
     docs: {
       description: {
@@ -131,6 +135,12 @@ type Story = StoryObj;
 
 export const HorizontalYearly: Story = {
   name: 'Horizontal Yearly View',
+  args: {
+    vertical: false,
+    startYear: 1970,
+    endYear: 2010,
+    label: "A timeline of a teacher's career journey from 1970 to 2010.",
+  },
   parameters: {
     docs: {
       description: {
@@ -139,13 +149,14 @@ export const HorizontalYearly: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${darkThemeStyles}
     <div class="timeline-dark-theme">
       <timeline-component
-        start-year="1970"
-        end-year="2010"
-        label="A timeline of a teacher's career journey from 1970 to 2010."
+        ?vertical=${args.vertical}
+        start-year="${args.startYear}"
+        end-year="${args.endYear}"
+        label="${args.label}"
       >
         <timeline-event
           date="1972-08-13"
@@ -184,6 +195,10 @@ export const HorizontalYearly: Story = {
 
 export const HorizontalMonthly: Story = {
   name: 'Horizontal Monthly View (Auto-Detected)',
+  args: {
+    vertical: false,
+    label: 'A timeline of project milestones over a few months.',
+  },
   parameters: {
     docs: {
       description: {
@@ -192,10 +207,10 @@ export const HorizontalMonthly: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${darkThemeStyles}
     <div class="timeline-dark-theme">
-      <timeline-component label="A timeline of project milestones over a few months.">
+      <timeline-component ?vertical=${args.vertical} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -229,6 +244,10 @@ export const HorizontalMonthly: Story = {
 
 export const Vertical: Story = {
   name: 'Vertical View',
+  args: {
+    vertical: true,
+    label: 'A vertical timeline of project milestones.',
+  },
   parameters: {
     docs: {
       description: {
@@ -237,10 +256,10 @@ export const Vertical: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${darkThemeStyles}
     <div class="timeline-dark-theme">
-      <timeline-component vertical label="A vertical timeline of project milestones.">
+      <timeline-component ?vertical=${args.vertical} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
