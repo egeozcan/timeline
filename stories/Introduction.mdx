@@ -1,0 +1,92 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Introduction" />
+
+# lit-timeline
+
+A customizable timeline component built with Lit for displaying chronological events.
+
+## Features
+
+- **Horizontal and vertical layouts** - Display timelines in either orientation
+- **CSS custom properties for theming** - Fully customizable appearance
+- **Auto date range detection** - Automatically determines timeline bounds from events
+- **Responsive design** - Works across different screen sizes
+- **Full accessibility support** - ARIA labels, keyboard navigation, and screen reader support
+
+## Installation
+
+```bash
+npm install lit-timeline
+```
+
+## Basic Usage
+
+```html
+<script type="module">
+  import 'lit-timeline';
+</script>
+
+<timeline-component label="Project milestones">
+  <timeline-event date="2024-03-15">
+    <h3>Project Kick-off</h3>
+    <p>The initial planning phase begins.</p>
+  </timeline-event>
+  <timeline-event date="2024-05-22" image-src="design.jpg">
+    <h3>Design Complete</h3>
+    <p>Final designs approved by stakeholders.</p>
+  </timeline-event>
+</timeline-component>
+```
+
+## Components
+
+### `<timeline-component>`
+
+The main container that positions events on a timeline axis.
+
+**Attributes:**
+- `vertical` - Display timeline vertically (default: horizontal)
+- `start-year` - Override start year for timeline range
+- `end-year` - Override end year for timeline range
+- `label` - Accessible label for the timeline region
+
+### `<timeline-event>`
+
+Individual event cards displayed on the timeline.
+
+**Attributes:**
+- `date` - Event date in YYYY-MM-DD format (required)
+- `image-src` - URL for the event image (optional)
+
+## CSS Custom Properties
+
+### Timeline Container
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `--timeline-axis-color` | `#47476b` | Color of the main timeline axis |
+| `--timeline-axis-width` | `2` | Width of the timeline axis line |
+| `--timeline-connector-color` | `#47476b` | Color of event connector lines |
+| `--timeline-connector-width` | `2` | Width of connector lines |
+| `--timeline-dot-color` | `#ff6b6b` | Color of event dots on axis |
+| `--timeline-dot-size` | `5` | Radius of event dots |
+| `--timeline-marker-color` | `#a4a4c1` | Color of date marker ticks |
+| `--timeline-marker-text-color` | `#a4a4c1` | Color of date marker text |
+| `--timeline-marker-font-size` | `0.9rem` | Font size of date markers |
+| `--timeline-h-row-gap` | `330px` | Vertical gap between rows (horizontal mode) |
+| `--timeline-v-column-gap` | `100px` | Horizontal gap between columns (vertical mode) |
+
+### Timeline Event
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `--timeline-event-width` | `250px` | Width of event cards |
+| `--timeline-event-bg-color` | `#2c2c54` | Event card background |
+| `--timeline-event-border-color` | `#47476b` | Event card border color |
+| `--timeline-event-border-radius` | `16px` | Event card border radius |
+| `--timeline-event-shadow` | `0 10px 30px rgba(0,0,0,0.3)` | Event card box shadow |
+| `--timeline-event-image-height` | `140px` | Height of event images |
+| `--timeline-event-content-padding` | `20px` | Padding inside content area |
+| `--timeline-event-heading-color` | `#ffffff` | Event title color |
+| `--timeline-event-text-color` | `#a4a4c1` | Event description color |

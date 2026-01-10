@@ -1,0 +1,20 @@
+# Build output
+dist/
+storybook-static/
+
+# Dependencies
+node_modules/
+
+# Coverage
+coverage/
+
+# Generated files
+custom-elements.json
+package-lock.json
+
+# Test snapshots
+test/visual/__snapshots__/
+
+# Cache
+.cache/
+*.log

@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Storybook
+storybook-static/
+
+# Test output
+coverage/
+test-results/
+playwright-report/
+
+# Visual test snapshots (commit these after initial generation)
+# test/visual/__snapshots__/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# Custom elements manifest (generated)
+custom-elements.json
