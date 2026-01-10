@@ -48,7 +48,7 @@ test.describe('Visual Regression Tests', () => {
 
     test('empty timeline', async ({ page }) => {
       await page.goto('/iframe.html?id=components-timelinecomponent--empty&viewMode=story');
-      await page.waitForSelector('timeline-component');
+      await page.waitForSelector('timeline-component', { state: 'attached' });
       await page.waitForTimeout(500);
 
       await expect(page.locator('timeline-component')).toHaveScreenshot('timeline-empty.png');
