@@ -372,6 +372,11 @@ export const Vertical: Story = {
 
 export const CustomStyled: Story = {
   name: 'Custom Styled (Orange Theme)',
+  args: {
+    vertical: true,
+    list: false,
+    label: 'A custom-styled vertical timeline.',
+  },
   parameters: {
     docs: {
       description: {
@@ -380,7 +385,7 @@ export const CustomStyled: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     <style>
       /* Custom orange theme via CSS Parts */
       .custom-styled-timeline timeline-component::part(axis-line) {
@@ -431,7 +436,7 @@ export const CustomStyled: Story = {
       }
     </style>
     <div class="custom-styled-timeline">
-      <timeline-component vertical label="A custom-styled vertical timeline.">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -454,6 +459,11 @@ export const CustomStyled: Story = {
 
 export const LightTheme: Story = {
   name: 'Light Theme',
+  args: {
+    vertical: false,
+    list: false,
+    label: 'A light-themed timeline.',
+  },
   parameters: {
     docs: {
       description: {
@@ -462,10 +472,10 @@ export const LightTheme: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${lightThemeStyles}
     <div class="timeline-light-theme">
-      <timeline-component label="A light-themed timeline.">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -488,6 +498,11 @@ export const LightTheme: Story = {
 
 export const Unstyled: Story = {
   name: 'Unstyled (Minimal Defaults)',
+  args: {
+    vertical: false,
+    list: false,
+    label: 'An unstyled timeline showing minimal defaults.',
+  },
   parameters: {
     docs: {
       description: {
@@ -496,7 +511,7 @@ export const Unstyled: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     <style>
       /* Light background wrapper for unstyled visibility */
       .unstyled-wrapper {
@@ -523,7 +538,7 @@ export const Unstyled: Story = {
       }
     </style>
     <div class="unstyled-wrapper">
-      <timeline-component label="An unstyled timeline showing minimal defaults.">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -546,6 +561,11 @@ export const Unstyled: Story = {
 
 export const Empty: Story = {
   name: 'Empty Timeline',
+  args: {
+    vertical: false,
+    list: false,
+    label: 'An empty timeline.',
+  },
   parameters: {
     docs: {
       description: {
@@ -553,16 +573,22 @@ export const Empty: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${darkThemeStyles}
     <div class="timeline-dark-theme">
-      <timeline-component label="An empty timeline."> </timeline-component>
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
+      </timeline-component>
     </div>
   `,
 };
 
 export const SingleEvent: Story = {
   name: 'Single Event',
+  args: {
+    vertical: false,
+    list: false,
+    label: 'A timeline with a single event.',
+  },
   parameters: {
     docs: {
       description: {
@@ -570,10 +596,10 @@ export const SingleEvent: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${darkThemeStyles}
     <div class="timeline-dark-theme">
-      <timeline-component label="A timeline with a single event.">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event
           date="2024-06-15"
           image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
@@ -588,6 +614,11 @@ export const SingleEvent: Story = {
 
 export const ModernTheme: Story = {
   name: 'Modern Theme',
+  args: {
+    vertical: false,
+    list: false,
+    label: 'A modern-themed timeline.',
+  },
   parameters: {
     docs: {
       description: {
@@ -596,10 +627,10 @@ export const ModernTheme: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${modernThemeStyles}
     <div class="timeline-modern-theme">
-      <timeline-component label="A modern-themed timeline.">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -633,6 +664,11 @@ export const ModernTheme: Story = {
 
 export const ModernThemeVertical: Story = {
   name: 'Modern Theme (Vertical)',
+  args: {
+    vertical: true,
+    list: false,
+    label: 'A modern-themed vertical timeline.',
+  },
   parameters: {
     docs: {
       description: {
@@ -640,10 +676,10 @@ export const ModernThemeVertical: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${modernThemeStyles}
     <div class="timeline-modern-theme">
-      <timeline-component vertical label="A modern-themed vertical timeline.">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -674,6 +710,7 @@ export const ModernThemeVertical: Story = {
 export const ListView: Story = {
   name: 'List View',
   args: {
+    vertical: false,
     list: true,
     label: 'A list view of project milestones.',
   },
@@ -695,7 +732,7 @@ export const ListView: Story = {
       }
     </style>
     <div class="timeline-dark-theme" style="max-width: 700px;">
-      <timeline-component ?list=${args.list} label="${args.label}">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -729,6 +766,11 @@ export const ListView: Story = {
 
 export const ListViewModern: Story = {
   name: 'List View (Modern Theme)',
+  args: {
+    vertical: false,
+    list: true,
+    label: 'A modern-themed list view.',
+  },
   parameters: {
     docs: {
       description: {
@@ -736,10 +778,10 @@ export const ListViewModern: Story = {
       },
     },
   },
-  render: () => html`
+  render: (args) => html`
     ${modernThemeStyles}
     <div class="timeline-modern-theme" style="max-width: 700px;">
-      <timeline-component list label="A modern-themed list view.">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>

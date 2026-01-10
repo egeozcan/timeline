@@ -8,6 +8,7 @@ const preview: Preview = {
   parameters: {
     controls: {
       expanded: true,
+      disableSaveFromUI: true,
       matchers: {
         color: /(background|color)$/i,
         date: /Date$/i,
