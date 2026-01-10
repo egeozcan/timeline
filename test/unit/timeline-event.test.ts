@@ -46,7 +46,8 @@ describe('TimelineEvent', () => {
       </timeline-event>
     `);
 
-    expect(el.getAttribute('tabindex')).to.equal('0');
+    // Default tabindex is -1 for roving tabindex pattern (managed by parent timeline-component)
+    expect(el.getAttribute('tabindex')).to.equal('-1');
   });
 
   it('has proper ARIA attributes', async () => {

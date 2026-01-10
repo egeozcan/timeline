@@ -40,7 +40,7 @@ export const timelineEventStyles = css`
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--timeline-event-placeholder-color, #8c8caf);
+    color: var(--timeline-event-placeholder-color, #b8b8d0);
     font-size: 0.9em;
   }
 

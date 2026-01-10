@@ -48,8 +48,10 @@ export class TimelineEvent extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
-    // Make the element focusable for accessibility
-    this.setAttribute('tabindex', '0');
+    // Set initial tabindex - will be managed by parent timeline-component for roving tabindex
+    if (!this.hasAttribute('tabindex')) {
+      this.setAttribute('tabindex', '-1');
+    }
   }
 
   override render() {

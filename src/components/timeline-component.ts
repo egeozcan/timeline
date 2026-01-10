@@ -86,9 +86,17 @@ export class TimelineComponent extends LitElement {
 
   private _resizeObserver = new ResizeObserver(() => this._calculateLayout());
   private readonly MIN_CONTENT_DIM = 1800;
+  private _activeEventIndex = 0;
+  private _boundKeyHandler = this._handleKeyDown.bind(this);
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    this.addEventListener('keydown', this._boundKeyHandler);
+  }
 
   override disconnectedCallback(): void {
     this._resizeObserver.disconnect();
+    this.removeEventListener('keydown', this._boundKeyHandler);
     super.disconnectedCallback();
   }
 
@@ -101,6 +109,102 @@ export class TimelineComponent extends LitElement {
     // Wait for next frame to ensure DOM is ready
     await new Promise((resolve) => setTimeout(resolve, 0));
     this._calculateLayout();
+    this._initRovingTabindex();
+  }
+
+  /**
+   * Initialize roving tabindex pattern for keyboard navigation
+   */
+  private _initRovingTabindex(): void {
+    const events = this._getEventElements();
+    events.forEach((event, index) => {
+      event.setAttribute('tabindex', index === 0 ? '0' : '-1');
+    });
+    this._activeEventIndex = 0;
+  }
+
+  /**
+   * Get all timeline-event children sorted by date
+   */
+  private _getEventElements(): HTMLElement[] {
+    return Array.from(this.querySelectorAll('timeline-event')) as HTMLElement[];
+  }
+
+  /**
+   * Handle keyboard navigation for roving tabindex
+   */
+  private _handleKeyDown(event: KeyboardEvent): void {
+    const events = this._getEventElements();
+    if (events.length === 0) {
+      return;
+    }
+
+    // Only handle if focus is on a timeline-event
+    const focusedEvent = document.activeElement;
+    if (!focusedEvent || focusedEvent.tagName.toLowerCase() !== 'timeline-event') {
+      return;
+    }
+
+    const currentIndex = events.indexOf(focusedEvent as HTMLElement);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    let newIndex = currentIndex;
+    const isHorizontal = !this.vertical;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        if (isHorizontal) {
+          newIndex = Math.min(currentIndex + 1, events.length - 1);
+        }
+        break;
+      case 'ArrowLeft':
+        if (isHorizontal) {
+          newIndex = Math.max(currentIndex - 1, 0);
+        }
+        break;
+      case 'ArrowDown':
+        if (this.vertical) {
+          newIndex = Math.min(currentIndex + 1, events.length - 1);
+        }
+        break;
+      case 'ArrowUp':
+        if (this.vertical) {
+          newIndex = Math.max(currentIndex - 1, 0);
+        }
+        break;
+      case 'Home':
+        newIndex = 0;
+        break;
+      case 'End':
+        newIndex = events.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    if (newIndex !== currentIndex) {
+      event.preventDefault();
+      this._setActiveEvent(events, newIndex);
+    }
+  }
+
+  /**
+   * Set the active event for roving tabindex
+   */
+  private _setActiveEvent(events: HTMLElement[], index: number): void {
+    // Remove tabindex from current active
+    events[this._activeEventIndex]?.setAttribute('tabindex', '-1');
+
+    // Set new active
+    this._activeEventIndex = index;
+    const newActive = events[index];
+    newActive.setAttribute('tabindex', '0');
+    newActive.focus();
+
+    // Scroll the event into view if needed
+    newActive.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }
 
   private _calculateLayout(): void {
@@ -436,7 +540,13 @@ export class TimelineComponent extends LitElement {
     const dotRadius = getComputedStyle(this).getPropertyValue('--timeline-dot-size') || '5';
 
     return html`
-      <div class="scroll-wrapper" part="scroll-wrapper" role="region" aria-label="${this.label}">
+      <div
+        class="scroll-wrapper"
+        part="scroll-wrapper"
+        role="region"
+        aria-label="${this.label}"
+        tabindex="0"
+      >
         <div class="timeline-container" part="container">
           <slot></slot>
 
