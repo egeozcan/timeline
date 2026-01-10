@@ -1,8 +1,8 @@
 /**
  * Modern Theme for lit-timeline
  *
- * A contemporary theme featuring gradients, glass-morphism effects,
- * and a vibrant color palette with smooth transitions.
+ * A contemporary light theme featuring glass-morphism effects,
+ * subtle gradients, and teal accents with clean aesthetics.
  *
  * Usage:
  *   <link rel="stylesheet" href="theme-modern.css">
@@ -12,121 +12,97 @@
 
 /* Timeline Component */
 timeline-component::part(scroll-wrapper) {
-  scrollbar-color: rgba(99, 102, 241, 0.5) transparent;
-}
-
-timeline-component::part(container) {
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  scrollbar-color: rgba(20, 184, 166, 0.5) transparent;
 }
 
 timeline-component::part(axis-line) {
-  stroke: url(#modern-gradient);
+  stroke: #14b8a6;
   stroke-width: 3;
-  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
 }
 
 timeline-component::part(connector-line) {
-  stroke: rgba(139, 92, 246, 0.4);
+  stroke: #99f6e4;
   stroke-width: 2;
   stroke-dasharray: 4 4;
 }
 
 timeline-component::part(dot) {
-  fill: #a78bfa;
-  filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.8));
+  fill: #14b8a6;
+  filter: drop-shadow(0 0 4px rgba(20, 184, 166, 0.4));
 }
 
 timeline-component::part(marker-tick) {
-  stroke: rgba(139, 92, 246, 0.6);
+  stroke: #94a3b8;
   stroke-width: 2;
 }
 
 timeline-component::part(marker-text) {
-  fill: #a5b4fc;
+  fill: #64748b;
   font-weight: 500;
 }
 
 /* Timeline Event - Glass-morphism Card */
 timeline-event::part(card) {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 27, 75, 0.8) 0%,
-    rgba(49, 46, 129, 0.6) 100%
-  );
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 20px;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(139, 92, 246, 0.1) inset,
-    0 0 80px -20px rgba(139, 92, 246, 0.3);
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 timeline-event:hover::part(card),
 timeline-event:focus-within::part(card) {
-  border-color: rgba(167, 139, 250, 0.6);
+  border-color: rgba(20, 184, 166, 0.4);
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(167, 139, 250, 0.2) inset,
-    0 0 100px -10px rgba(139, 92, 246, 0.4);
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
 }
 
 timeline-event::part(image) {
-  background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 timeline-event::part(image-placeholder) {
-  background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
-  color: #818cf8;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #64748b;
   font-weight: 500;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+timeline-event::part(date) {
+  color: #14b8a6;
 }
 
 timeline-event::part(content) {
-  color: #c7d2fe;
+  color: #475569;
 }
 
 /* Slotted content styling - must be applied to parent container */
 .timeline-modern-theme timeline-event h3 {
-  color: #f8fafc;
-  background: linear-gradient(90deg, #f8fafc 0%, #c7d2fe 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #0f172a;
 }
 
 .timeline-modern-theme timeline-event p {
-  color: #a5b4fc;
+  color: #475569;
   line-height: 1.6;
 }
 
 /* Focus styles */
 .timeline-modern-theme timeline-event:focus {
-  outline: 2px solid #a78bfa;
+  outline: 2px solid #14b8a6;
   outline-offset: 4px;
   border-radius: 20px;
 }
 
 /* Background wrapper suggestion */
 .timeline-modern-theme {
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
   padding: 40px 20px;
   border-radius: 16px;
   min-height: 400px;
 }
-
-/* SVG gradient definition (add to your HTML) */
-/*
-<svg width="0" height="0">
-  <defs>
-    <linearGradient id="modern-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-</svg>
-*/

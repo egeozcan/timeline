@@ -49,77 +49,70 @@ const darkThemeStyles = html`
 // Modern theme styles (replicates theme-modern.css for storybook)
 const modernThemeStyles = html`
   <style>
-    /* Modern Theme via CSS Parts - Glass-morphism */
+    /* Modern Theme via CSS Parts - Light Glass-morphism */
     .timeline-modern-theme {
-      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
       padding: 40px 20px;
       border-radius: 16px;
       min-height: 400px;
     }
     .timeline-modern-theme timeline-component::part(axis-line) {
-      stroke: #8b5cf6;
+      stroke: #14b8a6;
       stroke-width: 3;
-      filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
     }
     .timeline-modern-theme timeline-component::part(connector-line) {
-      stroke: rgba(139, 92, 246, 0.4);
+      stroke: #99f6e4;
       stroke-width: 2;
       stroke-dasharray: 4 4;
     }
     .timeline-modern-theme timeline-component::part(dot) {
-      fill: #a78bfa;
-      filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.8));
+      fill: #14b8a6;
+      filter: drop-shadow(0 0 4px rgba(20, 184, 166, 0.4));
     }
     .timeline-modern-theme timeline-component::part(marker-tick) {
-      stroke: rgba(139, 92, 246, 0.6);
+      stroke: #94a3b8;
       stroke-width: 2;
     }
     .timeline-modern-theme timeline-component::part(marker-text) {
-      fill: #a5b4fc;
+      fill: #64748b;
       font-weight: 500;
     }
     .timeline-modern-theme timeline-event::part(card) {
-      background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(49, 46, 129, 0.6) 100%);
+      background: rgba(255, 255, 255, 0.8);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(139, 92, 246, 0.3);
+      border: 1px solid rgba(148, 163, 184, 0.3);
       border-radius: 20px;
       box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(139, 92, 246, 0.1) inset,
-        0 0 80px -20px rgba(139, 92, 246, 0.3);
+        0 4px 24px rgba(0, 0, 0, 0.06),
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset;
     }
     .timeline-modern-theme timeline-event:hover::part(card),
     .timeline-modern-theme timeline-event:focus-within::part(card) {
-      border-color: rgba(167, 139, 250, 0.6);
+      border-color: rgba(20, 184, 166, 0.4);
       box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(167, 139, 250, 0.2) inset,
-        0 0 100px -10px rgba(139, 92, 246, 0.4);
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.9) inset;
     }
     .timeline-modern-theme timeline-event::part(image),
     .timeline-modern-theme timeline-event::part(image-placeholder) {
-      background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
-      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
     }
     .timeline-modern-theme timeline-event::part(image-placeholder) {
-      color: #818cf8;
+      color: #64748b;
     }
     .timeline-modern-theme timeline-event::part(date) {
-      color: #a5b4fc;
+      color: #14b8a6;
     }
     .timeline-modern-theme timeline-event h3 {
-      color: #f8fafc;
-      background: linear-gradient(90deg, #f8fafc 0%, #c7d2fe 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #0f172a;
     }
     .timeline-modern-theme timeline-event p {
-      color: #a5b4fc;
+      color: #475569;
     }
     .timeline-modern-theme timeline-event:focus {
-      outline: 2px solid #a78bfa;
+      outline: 2px solid #14b8a6;
       outline-offset: 4px;
       border-radius: 20px;
     }
@@ -239,6 +232,7 @@ export const HorizontalYearly: Story = {
     <div class="timeline-dark-theme">
       <timeline-component
         ?vertical=${args.vertical}
+        ?list=${args.list}
         start-year="${args.startYear}"
         end-year="${args.endYear}"
         label="${args.label}"
@@ -295,7 +289,7 @@ export const HorizontalMonthly: Story = {
   render: (args) => html`
     ${darkThemeStyles}
     <div class="timeline-dark-theme">
-      <timeline-component ?vertical=${args.vertical} label="${args.label}">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -344,7 +338,7 @@ export const Vertical: Story = {
   render: (args) => html`
     ${darkThemeStyles}
     <div class="timeline-dark-theme">
-      <timeline-component ?vertical=${args.vertical} label="${args.label}">
+      <timeline-component ?vertical=${args.vertical} ?list=${args.list} label="${args.label}">
         <timeline-event date="2024-03-15">
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
@@ -598,7 +592,7 @@ export const ModernTheme: Story = {
     docs: {
       description: {
         story:
-          'A timeline with the modern glass-morphism theme featuring gradients, blur effects, and a vibrant purple color palette.',
+          'A timeline with the modern glass-morphism theme featuring a light background, blur effects, and teal accents.',
       },
     },
   },
