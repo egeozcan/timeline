@@ -20,11 +20,8 @@ export const timelineEventStyles = css`
   }
 
   .card {
-    background-color: var(--timeline-event-bg-color, #2c2c54);
-    border-radius: var(--timeline-event-border-radius, 16px);
-    border: 1px solid var(--timeline-event-border-color, #47476b);
-    box-shadow: var(--timeline-event-shadow, 0 10px 30px rgba(0, 0, 0, 0.3));
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   img,
@@ -33,14 +30,12 @@ export const timelineEventStyles = css`
     height: var(--timeline-event-image-height, 140px);
     object-fit: cover;
     display: block;
-    background-color: var(--timeline-event-placeholder-bg, #3a3a66);
   }
 
   .image-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--timeline-event-placeholder-color, #b8b8d0);
     font-size: 0.9em;
   }
 
@@ -53,7 +48,6 @@ export const timelineEventStyles = css`
   ::slotted(h3) {
     font-size: var(--timeline-event-heading-font-size, 1.1rem);
     font-weight: var(--timeline-event-heading-font-weight, 700);
-    color: var(--timeline-event-heading-color, #ffffff);
     margin: 0 0 8px 0;
     overflow: hidden;
     display: -webkit-box;
@@ -64,7 +58,6 @@ export const timelineEventStyles = css`
   ::slotted(p) {
     font-size: var(--timeline-event-text-font-size, 0.9rem);
     line-height: 1.5;
-    color: var(--timeline-event-text-color, #a4a4c1);
     margin: 0;
     overflow: hidden;
     display: -webkit-box;

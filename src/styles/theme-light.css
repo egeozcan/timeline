@@ -1,0 +1,69 @@
+/**
+ * Light Theme for lit-timeline
+ * 
+ * A clean, light theme using CSS parts.
+ * Import this file or copy these styles to apply the light theme.
+ * 
+ * Usage:
+ *   <link rel="stylesheet" href="theme-light.css">
+ *   or
+ *   @import 'lit-timeline/styles/theme-light.css';
+ */
+
+/* Timeline Component */
+timeline-component::part(scroll-wrapper) {
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+timeline-component::part(axis-line) {
+    stroke: #94a3b8;
+    stroke-width: 2;
+}
+
+timeline-component::part(connector-line) {
+    stroke: #94a3b8;
+    stroke-width: 2;
+}
+
+timeline-component::part(dot) {
+    fill: #3b82f6;
+}
+
+timeline-component::part(marker-tick) {
+    stroke: #64748b;
+    stroke-width: 2;
+}
+
+timeline-component::part(marker-text) {
+    fill: #64748b;
+}
+
+/* Timeline Event */
+timeline-event::part(card) {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+timeline-event::part(image) {
+    background-color: #f1f5f9;
+}
+
+timeline-event::part(image-placeholder) {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+timeline-event::part(content) {
+    color: #475569;
+}
+
+/* Slotted content styling - must be applied to parent container */
+.timeline-light-theme timeline-event h3 {
+    color: #1e293b;
+}
+
+.timeline-light-theme timeline-event p {
+    color: #475569;
+}

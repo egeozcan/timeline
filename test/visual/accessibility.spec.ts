@@ -55,6 +55,19 @@ test.describe('Accessibility Tests', () => {
 
       expect(results.violations).toEqual([]);
     });
+
+    test('unstyled timeline has no accessibility violations', async ({ page }) => {
+      await page.goto('/iframe.html?id=components-timelinecomponent--unstyled&viewMode=story');
+      await page.waitForSelector('timeline-component');
+      await page.waitForTimeout(1000);
+
+      const results = await new AxeBuilder({ page })
+        .include('timeline-component')
+        .disableRules(['color-contrast'])
+        .analyze();
+
+      expect(results.violations).toEqual([]);
+    });
   });
 
   test.describe('TimelineEvent', () => {
@@ -80,6 +93,16 @@ test.describe('Accessibility Tests', () => {
 
     test('event with long content has no accessibility violations', async ({ page }) => {
       await page.goto('/iframe.html?id=components-timelineevent--long-content&viewMode=story');
+      await page.waitForSelector('timeline-event');
+      await page.waitForTimeout(500);
+
+      const results = await new AxeBuilder({ page }).include('timeline-event').analyze();
+
+      expect(results.violations).toEqual([]);
+    });
+
+    test('unstyled event has no accessibility violations', async ({ page }) => {
+      await page.goto('/iframe.html?id=components-timelineevent--unstyled&viewMode=story');
       await page.waitForSelector('timeline-event');
       await page.waitForTimeout(500);
 

@@ -126,70 +126,95 @@ Individual event cards displayed on the timeline.
 
 ## Styling
 
+By default, these components have **minimal styling** - only structural/layout CSS is applied. All visual theming (colors, borders, shadows) must be applied via CSS parts.
+
+### Minimal Defaults
+
+The components render with no colors, borders, or shadows by default. This allows consumers to apply any theme without needing to override built-in styles.
+
+```html
+<!-- Unstyled - uses browser defaults for text colors -->
+<timeline-component label="My timeline">
+  <timeline-event date="2024-01-01">
+    <h3>Event Title</h3>
+    <p>Event description</p>
+  </timeline-event>
+</timeline-component>
+```
+
+### Applying a Theme
+
+Use CSS parts to apply theming:
+
+```css
+/* Apply a dark theme */
+timeline-component::part(axis-line) {
+  stroke: #47476b;
+  stroke-width: 2;
+}
+timeline-component::part(connector-line) {
+  stroke: #47476b;
+}
+timeline-component::part(dot) {
+  fill: #ff6b6b;
+}
+timeline-component::part(marker-tick) {
+  stroke: #a4a4c1;
+}
+timeline-component::part(marker-text) {
+  fill: #a4a4c1;
+}
+
+timeline-event::part(card) {
+  background-color: #2c2c54;
+  border: 1px solid #47476b;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+timeline-event::part(image),
+timeline-event::part(image-placeholder) {
+  background-color: #3a3a66;
+}
+
+/* Slotted content styling */
+timeline-event h3 {
+  color: #ffffff;
+}
+timeline-event p {
+  color: #a4a4c1;
+}
+```
+
+A pre-built dark theme is available at `src/styles/theme-dark.css`.
+
 ### CSS Custom Properties
 
-Customize the appearance using CSS custom properties:
+Some layout properties can still be customized via CSS custom properties:
 
 ```css
 timeline-component {
-  /* Timeline axis */
-  --timeline-axis-color: #47476b;
-  --timeline-axis-width: 2;
-
-  /* Event connectors */
-  --timeline-connector-color: #47476b;
-  --timeline-connector-width: 2;
-
-  /* Event dots */
-  --timeline-dot-color: #ff6b6b;
-  --timeline-dot-size: 5;
-
-  /* Date markers */
-  --timeline-marker-color: #a4a4c1;
-  --timeline-marker-text-color: #a4a4c1;
-  --timeline-marker-font-size: 0.9rem;
-
   /* Layout spacing */
   --timeline-h-row-gap: 330px; /* Horizontal mode row gap */
   --timeline-v-column-gap: 100px; /* Vertical mode column gap */
-
-  /* Scrollbar */
-  --timeline-scrollbar-thumb-color: #47476b;
-  --timeline-scrollbar-track-color: transparent;
+  --timeline-marker-font-size: 0.9rem;
 }
 
 timeline-event {
-  /* Card appearance */
+  /* Card layout */
   --timeline-event-width: 250px;
-  --timeline-event-bg-color: #2c2c54;
-  --timeline-event-border-color: #47476b;
-  --timeline-event-border-radius: 16px;
-  --timeline-event-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-
-  /* Image */
   --timeline-event-image-height: 140px;
-  --timeline-event-placeholder-bg: #3a3a66;
-  --timeline-event-placeholder-color: #8c8caf;
-
-  /* Content */
   --timeline-event-content-padding: 20px;
   --timeline-event-content-min-height: 125px;
-
-  /* Typography */
-  --timeline-event-heading-color: #ffffff;
   --timeline-event-heading-font-size: 1.1rem;
   --timeline-event-heading-font-weight: 700;
-  --timeline-event-text-color: #a4a4c1;
   --timeline-event-text-font-size: 0.9rem;
-
-  /* Focus state */
   --timeline-event-focus-offset: 4px;
 }
 ```
 
 ### CSS Parts
 
-For more advanced styling, use CSS `::part()` selectors:
+For styling, use CSS `::part()` selectors:
 
 **Timeline Component Parts:**
 
@@ -240,16 +265,6 @@ timeline-event::part(content) {
 ### Theming Example
 
 ```css
-/* Dark purple theme */
-.purple-theme {
-  --timeline-axis-color: #6b46c1;
-  --timeline-dot-color: #9f7aea;
-  --timeline-connector-color: #553c9a;
-  --timeline-event-bg-color: #2d3748;
-  --timeline-event-border-color: #6b46c1;
-  --timeline-event-heading-color: #e9d8fd;
-}
-
 /* Grayscale images that colorize on hover */
 .grayscale-hover timeline-event::part(image) {
   filter: grayscale(100%);

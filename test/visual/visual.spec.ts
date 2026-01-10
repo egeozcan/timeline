@@ -63,6 +63,14 @@ test.describe('Visual Regression Tests', () => {
         'timeline-single-event.png'
       );
     });
+
+    test('unstyled view', async ({ page }) => {
+      await page.goto('/iframe.html?id=components-timelinecomponent--unstyled&viewMode=story');
+      await page.waitForSelector('timeline-component');
+      await page.waitForTimeout(1000);
+
+      await expect(page.locator('.unstyled-wrapper')).toHaveScreenshot('timeline-unstyled.png');
+    });
   });
 
   test.describe('TimelineEvent', () => {
@@ -119,6 +127,14 @@ test.describe('Visual Regression Tests', () => {
       await page.waitForTimeout(300); // Wait for focus transition
 
       await expect(page.locator('timeline-event')).toHaveScreenshot('event-focus.png');
+    });
+
+    test('unstyled event', async ({ page }) => {
+      await page.goto('/iframe.html?id=components-timelineevent--unstyled&viewMode=story');
+      await page.waitForSelector('timeline-event');
+      await page.waitForTimeout(500);
+
+      await expect(page.locator('.unstyled-wrapper')).toHaveScreenshot('event-unstyled.png');
     });
   });
 

@@ -554,7 +554,7 @@ export class TimelineComponent extends LitElement {
             <!-- Timeline axis -->
             <path
               d="${this._svgData.axisPath}"
-              stroke="var(--timeline-axis-color, #47476b)"
+              stroke="var(--timeline-axis-color)"
               stroke-width="var(--timeline-axis-width, 2)"
               part="axis-line"
             />
@@ -564,7 +564,7 @@ export class TimelineComponent extends LitElement {
               (pathData) => svg`
               <path
                 d="${pathData}"
-                stroke="var(--timeline-connector-color, #47476b)"
+                stroke="var(--timeline-connector-color)"
                 stroke-width="var(--timeline-connector-width, 2)"
                 fill="none"
                 part="connector-line"
@@ -580,7 +580,7 @@ export class TimelineComponent extends LitElement {
                 y1="${m.line.y1}"
                 x2="${m.line.x2}"
                 y2="${m.line.y2}"
-                stroke="var(--timeline-marker-color, #a4a4c1)"
+                stroke="var(--timeline-marker-color)"
                 stroke-width="2"
                 part="marker-tick"
               />
@@ -601,7 +601,7 @@ export class TimelineComponent extends LitElement {
                 cx="${dot.cx}"
                 cy="${dot.cy}"
                 r="${dotRadius}"
-                fill="var(--timeline-dot-color, #ff6b6b)"
+                fill="var(--timeline-dot-color)"
                 part="dot"
               />
             `
