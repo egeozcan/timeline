@@ -272,11 +272,54 @@ Override this with `start-year` and `end-year` attributes for explicit control.
 
 ## Accessibility
 
+The timeline component is designed with accessibility in mind, following WCAG 2.1 AA guidelines.
+
+### ARIA Support
+
 - Timeline region has `role="region"` with configurable `aria-label`
 - Event cards have `role="article"` with descriptive labels
-- Events are keyboard focusable (`tabindex="0"`)
-- Screen reader-only date announcements
+- Screen reader-only date announcements for each event
 - SVG decorations are hidden from assistive technology (`aria-hidden="true"`)
+
+### Keyboard Navigation
+
+The timeline uses the **roving tabindex** pattern for efficient keyboard navigation:
+
+| Key           | Action                                     |
+| ------------- | ------------------------------------------ |
+| `Tab`         | Move focus into/out of the timeline        |
+| `Arrow Right` | Move to next event (horizontal layout)     |
+| `Arrow Left`  | Move to previous event (horizontal layout) |
+| `Arrow Down`  | Move to next event (vertical layout)       |
+| `Arrow Up`    | Move to previous event (vertical layout)   |
+| `Home`        | Move to first event                        |
+| `End`         | Move to last event                         |
+
+**How it works:**
+
+1. Press `Tab` to focus the timeline, then `Tab` again to focus the first event
+2. Use arrow keys to navigate between events (direction depends on layout orientation)
+3. Press `Tab` to exit the timeline and continue to the next focusable element
+
+```html
+<!-- Horizontal: use Left/Right arrows -->
+<timeline-component label="History">
+  <timeline-event date="2024-01-01">...</timeline-event>
+  <timeline-event date="2024-06-01">...</timeline-event>
+</timeline-component>
+
+<!-- Vertical: use Up/Down arrows -->
+<timeline-component vertical label="Process">
+  <timeline-event date="2024-01-01">...</timeline-event>
+  <timeline-event date="2024-06-01">...</timeline-event>
+</timeline-component>
+```
+
+### Focus Management
+
+- Only one event is in the tab order at a time (roving tabindex)
+- Focus automatically scrolls events into view
+- Visible focus indicator with customizable offset (`--timeline-event-focus-offset`)
 
 ## Browser Support
 
