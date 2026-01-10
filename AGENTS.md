@@ -95,6 +95,26 @@ npm run build-storybook    # Build static Storybook to storybook-static/
 npm run lint               # Run ESLint
 npm run lint:fix           # Auto-fix lint issues
 npm run format             # Format with Prettier
+npm run format:check       # Check formatting (CI)
+```
+
+### Pre-commit Hooks
+
+This repository uses **Husky** and **lint-staged** to enforce code quality on every commit:
+
+- **TypeScript files** (`*.ts`): ESLint fix + Prettier format
+- **JSON/Markdown files** (`*.json`, `*.md`, `*.mdx`): Prettier format
+
+Pre-commit hooks run automatically. If a commit fails:
+
+1. Fix the reported issues
+2. Stage the fixes with `git add`
+3. Retry the commit
+
+To skip hooks in emergencies (not recommended):
+
+```bash
+git commit --no-verify -m "message"
 ```
 
 ## Development Workflow
