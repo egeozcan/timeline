@@ -612,6 +612,51 @@ describe('TimelineComponent', () => {
     parent.remove();
   });
 
+  it('measures externally styled marker typography in mobile vertical layout', async () => {
+    const style = document.createElement('style');
+    style.textContent = `
+      timeline-component.large-marker-test::part(marker-text) {
+        font-size: 24px;
+      }
+    `;
+    document.head.append(style);
+
+    const parent = document.createElement('div');
+    parent.style.width = '320px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.className = 'large-marker-test';
+    el.vertical = true;
+    el.innerHTML = '<timeline-event date="2024-06-01"><h3>Event</h3></timeline-event>';
+    parent.append(el);
+    await settleLayout(el);
+
+    const parentRect = parent.getBoundingClientRect();
+    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.scroll-wrapper')!;
+    const axisPath = el.shadowRoot!.querySelector('[part="axis-line"]')!.getAttribute('d')!;
+    const axisX = Number(axisPath.match(/^M ([\d.]+),/)?.[1]);
+    const event = el.firstElementChild as HTMLElement;
+    const eventRect = event.getBoundingClientRect();
+    const marker = Array.from(
+      el.shadowRoot!.querySelectorAll<SVGTextElement>('[part="marker-text"]')
+    ).find((candidate) => candidate.textContent === 'Jun 24')!;
+    const markerRect = marker.getBoundingClientRect();
+    const intersects =
+      markerRect.left < eventRect.right &&
+      markerRect.right > eventRect.left &&
+      markerRect.top < eventRect.bottom &&
+      markerRect.bottom > eventRect.top;
+
+    expect(markerRect.left).to.be.at.least(parentRect.left);
+    expect(intersects).to.be.false;
+    expect(parseFloat(event.style.left)).to.be.at.least(axisX + 30);
+    expect(eventRect.right).to.be.at.most(parentRect.right);
+    expect(wrapper.scrollWidth).to.be.at.most(wrapper.clientWidth);
+
+    parent.remove();
+    style.remove();
+  });
+
   it('alternates vertical event sides at 600px', async () => {
     const parent = document.createElement('div');
     parent.style.width = '600px';

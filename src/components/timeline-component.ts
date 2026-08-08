@@ -733,6 +733,7 @@ export class TimelineComponent extends LitElement {
     }
     const probe = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     probe.classList.add('marker-text');
+    probe.setAttribute('part', 'marker-text');
     probe.style.visibility = 'hidden';
     svgLayer.append(probe);
 
