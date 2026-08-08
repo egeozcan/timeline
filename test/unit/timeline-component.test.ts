@@ -2,6 +2,13 @@ import { expect, fixture, html, waitUntil } from '@open-wc/testing';
 import '../../dist/index.js';
 import type { TimelineComponent } from '../../dist/index.js';
 
+async function settleLayout(el: TimelineComponent): Promise<void> {
+  await el.updateComplete;
+  await new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  );
+}
+
 describe('TimelineComponent', () => {
   it('renders with default horizontal layout', async () => {
     const el = await fixture<TimelineComponent>(html`
@@ -171,21 +178,487 @@ describe('TimelineComponent', () => {
     expect(connectors.length).to.be.greaterThanOrEqual(2);
   });
 
-  it('sorts events by date', async () => {
+  it('sorts DOM, coordinates, and keyboard navigation chronologically', async () => {
     const el = await fixture<TimelineComponent>(html`
       <timeline-component>
         <timeline-event date="2024-09-15"><h3>Later Event</h3></timeline-event>
         <timeline-event date="2024-03-15"><h3>Earlier Event</h3></timeline-event>
       </timeline-component>
     `);
+    await settleLayout(el);
 
-    // Allow time for layout calculation
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    await el.updateComplete;
+    const events = Array.from(el.children) as HTMLElement[];
+    expect(events.map((event) => event.getAttribute('date'))).to.deep.equal([
+      '2024-03-15',
+      '2024-09-15',
+    ]);
+    expect(parseFloat(events[0].style.left)).to.be.lessThan(parseFloat(events[1].style.left));
 
-    // The component should internally sort events by date
-    // This is reflected in the layout calculations
-    expect(el).to.exist;
+    events[0].focus();
+    events[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(document.activeElement).to.equal(events[1]);
+  });
+
+  it('adds a valid event after render to layout and roving tabindex', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+
+    const added = document.createElement('timeline-event');
+    added.setAttribute('date', '2024-06-15');
+    added.innerHTML = '<h3>Added</h3>';
+    el.append(added);
+    await settleLayout(el);
+
+    expect(added.getAttribute('data-layout-ready')).to.equal('');
+    expect(added.style.visibility).to.equal('visible');
+    expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(2);
+    expect(Array.from(el.children).map((event) => event.getAttribute('tabindex'))).to.deep.equal([
+      '0',
+      '-1',
+    ]);
+  });
+
+  it('restores a removed event to standalone state', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+        <timeline-event date="2024-06-15"><h3>Removed</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const removed = el.children[1] as HTMLElement;
+
+    removed.remove();
+    await settleLayout(el);
+
+    expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(1);
+    expect(removed.hasAttribute('data-timeline-managed')).to.be.false;
+    expect(removed.hasAttribute('data-layout-ready')).to.be.false;
+    expect(removed.hasAttribute('data-layout-mode')).to.be.false;
+    expect(removed.getAttribute('tabindex')).to.equal('0');
+    expect(removed.getAttribute('style')).to.be.null;
+  });
+
+  it('reacts to event date changes by reordering and repositioning', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+        <timeline-event date="2024-09-15"><h3>Second</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const changed = el.children[1] as HTMLElement;
+    const oldLeft = changed.style.left;
+
+    changed.setAttribute('date', '2024-01-15');
+    await settleLayout(el);
+
+    expect(el.children[0]).to.equal(changed);
+    expect(changed.style.left).not.to.equal(oldLeft);
+    expect(parseFloat(changed.style.left)).to.be.lessThan(
+      parseFloat((el.children[1] as HTMLElement).style.left)
+    );
+  });
+
+  it('ignores events inside a nested timeline', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><h3>Outer</h3></timeline-event>
+        <timeline-component>
+          <timeline-event date="2024-06-15"><h3>Nested</h3></timeline-event>
+        </timeline-component>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+
+    expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(1);
+    expect(el.querySelectorAll(':scope > timeline-event[tabindex]')).to.have.length(1);
+    expect(
+      el.querySelector('timeline-component timeline-event')!.getAttribute('tabindex')
+    ).to.equal('0');
+  });
+
+  it('applies either explicit range bound independently and reacts at runtime', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const dotPosition = () =>
+      Number(el.shadowRoot!.querySelector('[part="dot"]')!.getAttribute('cx'));
+    const automatic = dotPosition();
+
+    el.setAttribute('start-year', '2020');
+    await settleLayout(el);
+    const startOnly = dotPosition();
+    expect(startOnly).not.to.equal(automatic);
+
+    el.removeAttribute('start-year');
+    el.setAttribute('end-year', '2030');
+    await settleLayout(el);
+    const endOnly = dotPosition();
+    expect(endOnly).not.to.equal(automatic);
+
+    const labels = Array.from(el.shadowRoot!.querySelectorAll('.marker-text')).map((node) =>
+      node.textContent?.trim()
+    );
+    expect(labels).to.include('2030');
+  });
+
+  it('clears geometry and warns once for reversed ranges', async () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    Object.defineProperty(console, 'warn', {
+      configurable: true,
+      value: (...args: unknown[]) => warnings.push(args),
+    });
+    try {
+      const el = await fixture<TimelineComponent>(html`
+        <timeline-component start-year="2030" end-year="2020">
+          <timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>
+        </timeline-component>
+      `);
+      await settleLayout(el);
+      await settleLayout(el);
+
+      expect(el.shadowRoot!.querySelectorAll('svg path')).to.have.length(0);
+      expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(0);
+      expect(warnings).to.deep.equal([
+        ['[timeline-component] Invalid range 2030–2020; start-year must not exceed end-year.'],
+      ]);
+    } finally {
+      Object.defineProperty(console, 'warn', {
+        configurable: true,
+        value: originalWarn,
+      });
+    }
+  });
+
+  for (const mode of ['horizontal', 'vertical', 'list'] as const) {
+    it(`does not impose oversized dimensions on an empty ${mode} timeline`, async () => {
+      const el = await fixture<TimelineComponent>(html`
+        <timeline-component ?vertical=${mode === 'vertical'} ?list=${mode === 'list'}>
+        </timeline-component>
+      `);
+      await settleLayout(el);
+      const container = el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!;
+      expect(container.style.minWidth).to.equal('');
+      expect(container.style.minHeight).to.equal('');
+      expect(container.scrollWidth).to.be.lessThan(1800);
+      expect(container.scrollHeight).to.be.lessThan(1800);
+    });
+  }
+
+  it('clears SVG and owned dimensions after removing the final event', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    el.firstElementChild!.remove();
+    await settleLayout(el);
+
+    const container = el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!;
+    expect(el.shadowRoot!.querySelectorAll('svg path')).to.have.length(0);
+    expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(0);
+    expect(container.style.minWidth).to.equal('');
+    expect(container.style.minHeight).to.equal('');
+    expect(container.style.height).to.equal('');
+  });
+
+  it('clears mode-owned styles across horizontal, vertical, and list transitions', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const event = el.firstElementChild as HTMLElement;
+
+    el.style.width = '375px';
+    el.vertical = true;
+    await settleLayout(el);
+    expect(event.getAttribute('data-layout-mode')).to.equal('vertical');
+    expect(event.style.maxWidth).not.to.equal('');
+    expect(el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!.style.width).to.equal(
+      ''
+    );
+
+    el.vertical = false;
+    await settleLayout(el);
+    expect(event.getAttribute('data-layout-mode')).to.equal('horizontal');
+    expect(event.style.maxWidth).to.equal('');
+    expect(event.style.left).not.to.equal('');
+
+    el.list = true;
+    await settleLayout(el);
+    expect(event.style.left).to.equal('');
+    expect(event.style.top).to.equal('');
+    expect(event.style.position).to.equal('relative');
+
+    el.list = false;
+    await settleLayout(el);
+    expect(event.getAttribute('data-layout-mode')).to.equal('horizontal');
+    expect(event.style.position).to.equal('absolute');
+  });
+
+  it('matches a fresh destination layout after each mode transition', async () => {
+    type Mode = 'horizontal' | 'vertical' | 'list';
+    const parent = document.createElement('div');
+    parent.style.width = '375px';
+    document.body.append(parent);
+
+    const create = async (mode: Mode): Promise<TimelineComponent> => {
+      const component = document.createElement('timeline-component') as TimelineComponent;
+      component.vertical = mode === 'vertical';
+      component.list = mode === 'list';
+      component.innerHTML = '<timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>';
+      parent.append(component);
+      await settleLayout(component);
+      return component;
+    };
+    const snapshot = (component: TimelineComponent) => {
+      const container = component.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!;
+      const event = component.firstElementChild as HTMLElement;
+      return {
+        axis: component.shadowRoot!.querySelector('[part="axis-line"]')?.getAttribute('d') ?? '',
+        container: [
+          container.style.width,
+          container.style.height,
+          container.style.minWidth,
+          container.style.minHeight,
+        ],
+        event: [event.style.position, event.style.left, event.style.top, event.style.maxWidth],
+      };
+    };
+
+    for (const [source, destination] of [
+      ['horizontal', 'vertical'],
+      ['vertical', 'horizontal'],
+      ['list', 'horizontal'],
+    ] as [Mode, Mode][]) {
+      const transitioned = await create(source);
+      transitioned.vertical = destination === 'vertical';
+      transitioned.list = destination === 'list';
+      await settleLayout(transitioned);
+      const fresh = await create(destination);
+      expect(snapshot(transitioned)).to.deep.equal(snapshot(fresh));
+      transitioned.remove();
+      fresh.remove();
+    }
+    parent.remove();
+  });
+
+  it('keeps invalid direct events hidden, last, and out of roving navigation', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="not-a-date"><h3>Invalid</h3></timeline-event>
+        <timeline-event date="2024-06-15"><h3>Valid</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const [valid, invalid] = Array.from(el.children) as HTMLElement[];
+
+    expect(valid.getAttribute('date')).to.equal('2024-06-15');
+    expect(invalid.getAttribute('date')).to.equal('not-a-date');
+    expect(valid.getAttribute('tabindex')).to.equal('0');
+    expect(invalid.getAttribute('tabindex')).to.equal('-1');
+    expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(1);
+  });
+
+  it('remains responsive after detach and reconnect', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '700px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = '<timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>';
+    parent.append(el);
+    await settleLayout(el);
+    const axis = () =>
+      Number(
+        /^M ([\d.]+),/.exec(
+          el.shadowRoot!.querySelector('[part="axis-line"]')!.getAttribute('d') || ''
+        )?.[1]
+      );
+    const wideAxis = axis();
+
+    el.remove();
+    parent.style.width = '400px';
+    parent.append(el);
+    await settleLayout(el);
+
+    const reconnectedAxis = axis();
+    expect(reconnectedAxis).not.to.equal(wideAxis);
+
+    parent.style.width = '800px';
+    await settleLayout(el);
+    expect(axis()).not.to.equal(reconnectedAxis);
+    expect(el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!.style.width).to.equal(
+      ''
+    );
+    parent.remove();
+  });
+
+  it('responds to vertical parent width changes in both directions', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '700px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = '<timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>';
+    parent.append(el);
+    await settleLayout(el);
+    const axisPath = () =>
+      el.shadowRoot!.querySelector('[part="axis-line"]')!.getAttribute('d') || '';
+    const wide = axisPath();
+
+    parent.style.width = '320px';
+    await settleLayout(el);
+    const narrow = axisPath();
+    parent.style.width = '800px';
+    await settleLayout(el);
+
+    expect(narrow).not.to.equal(wide);
+    expect(axisPath()).not.to.equal(narrow);
+    expect(el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!.style.width).to.equal(
+      ''
+    );
+    parent.remove();
+  });
+
+  for (const width of [320, 375]) {
+    it(`keeps ${width}px vertical geometry non-negative and on the right`, async () => {
+      const parent = document.createElement('div');
+      parent.style.width = `${width}px`;
+      document.body.append(parent);
+      const el = document.createElement('timeline-component') as TimelineComponent;
+      el.vertical = true;
+      el.innerHTML = `
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+        <timeline-event date="2024-09-15"><h3>Second</h3></timeline-event>`;
+      parent.append(el);
+      await settleLayout(el);
+
+      const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.scroll-wrapper')!;
+      const axisPath = el.shadowRoot!.querySelector('[part="axis-line"]')!.getAttribute('d')!;
+      expect(axisPath).to.match(/^M 24,/);
+      for (const event of Array.from(el.children) as HTMLElement[]) {
+        expect(parseFloat(event.style.left)).to.be.at.least(54);
+        expect(event.getBoundingClientRect().left).to.be.at.least(
+          parent.getBoundingClientRect().left
+        );
+        expect(event.getBoundingClientRect().right).to.be.at.most(
+          parent.getBoundingClientRect().right
+        );
+      }
+      expect(wrapper.scrollWidth).to.be.at.most(wrapper.clientWidth);
+      parent.remove();
+    });
+  }
+
+  it('alternates vertical event sides at 600px', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '600px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = `
+      <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+      <timeline-event date="2024-09-15"><h3>Second</h3></timeline-event>`;
+    parent.append(el);
+    await settleLayout(el);
+
+    const [first, second] = Array.from(el.children) as HTMLElement[];
+    expect(parseFloat(first.style.left) + first.offsetWidth).to.be.lessThan(300);
+    expect(parseFloat(second.style.left)).to.be.greaterThan(300);
+    parent.remove();
+  });
+
+  it('keeps events at explicit range boundaries within horizontal content', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component start-year="2024" end-year="2024">
+        <timeline-event date="2024-01-01"><h3>Start</h3></timeline-event>
+        <timeline-event date="2024-12-31"><h3>End</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const container = el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!;
+    for (const event of Array.from(el.children) as HTMLElement[]) {
+      expect(parseFloat(event.style.left)).to.be.at.least(0);
+      expect(parseFloat(event.style.left) + event.offsetWidth).to.be.at.most(container.scrollWidth);
+    }
+  });
+
+  it('navigates from nested focused content in chronological order', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-09-15"><button>Later</button></timeline-event>
+        <timeline-event date="2024-03-15"><button>Earlier</button></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const [earlier, later] = Array.from(el.children) as HTMLElement[];
+    const button = earlier.querySelector('button')!;
+    button.focus();
+    button.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'End', bubbles: true, composed: true })
+    );
+    expect(document.activeElement).to.equal(later);
+
+    later.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    expect(document.activeElement).to.equal(earlier);
+  });
+
+  it('synchronizes roving tabindex when an event receives focus', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+        <timeline-event date="2024-09-15"><h3>Second</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const [first, second] = Array.from(el.children) as HTMLElement[];
+
+    second.focus();
+    expect(second.getAttribute('tabindex')).to.equal('0');
+    expect(first.getAttribute('tabindex')).to.equal('-1');
+
+    first.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
+    expect(first.getAttribute('tabindex')).to.equal('0');
+    expect(second.getAttribute('tabindex')).to.equal('-1');
+  });
+
+  for (const label of [undefined, '']) {
+    it(`falls back to Timeline for ${label === undefined ? 'omitted' : 'empty'} labels`, async () => {
+      const el = await fixture<TimelineComponent>(html`
+        <timeline-component label=${label ?? ''}></timeline-component>
+      `);
+      expect(el.shadowRoot!.querySelector('.scroll-wrapper')!.getAttribute('aria-label')).to.equal(
+        'Timeline'
+      );
+    });
+  }
+
+  it('applies list semantics to the slot and direct event hosts', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component list>
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+        <timeline-event date="2024-09-15"><h3>Second</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    expect(el.shadowRoot!.querySelector('slot')!.getAttribute('role')).to.equal('list');
+    for (const event of Array.from(el.children)) {
+      expect(event.getAttribute('role')).to.equal('listitem');
+      expect(event.getAttribute('data-layout-mode')).to.equal('list');
+    }
   });
 
   it('generates year markers for long timelines', async () => {

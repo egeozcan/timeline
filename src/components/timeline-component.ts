@@ -1,7 +1,8 @@
-import { LitElement, html, svg } from 'lit';
+import { LitElement, html, svg, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { timelineComponentStyles } from '../styles/timeline-component.styles.js';
 import type { EventLayout, SVGData, MarkerData } from '../types/index.js';
+import { isValidDate } from '../utils/date-utils.js';
 import type { TimelineEvent } from './timeline-event.js';
 
 interface DateRangeData {
@@ -14,6 +15,13 @@ interface DateRangeData {
     height: number;
   }[];
 }
+
+const EMPTY_SVG_DATA: SVGData = {
+  axisPath: '',
+  connectors: [],
+  dots: [],
+  markers: [],
+};
 
 /**
  * A timeline container component that positions events chronologically.
@@ -34,7 +42,7 @@ interface DateRangeData {
  * @cssprop [--timeline-connector-color=#47476b] - Color of event connector lines
  * @cssprop [--timeline-connector-width=2] - Width of connector lines
  * @cssprop [--timeline-dot-color=#ff6b6b] - Color of event dots on axis
- * @cssprop [--timeline-dot-size=5] - Radius of event dots
+ * @cssprop [--timeline-dot-size=5] - Radius of event dots on axis
  * @cssprop [--timeline-marker-color=#a4a4c1] - Color of date marker ticks
  * @cssprop [--timeline-marker-text-color=#a4a4c1] - Color of date marker text
  * @cssprop [--timeline-marker-font-size=0.9rem] - Font size of date markers
@@ -49,36 +57,23 @@ interface DateRangeData {
 export class TimelineComponent extends LitElement {
   static override styles = timelineComponentStyles;
 
-  /**
-   * Override the start year for the timeline range.
-   * If not set, it will be auto-detected from events.
-   */
+  /** Override the automatically detected timeline start year. */
   @property({ type: Number, attribute: 'start-year' })
   startYear?: number;
 
-  /**
-   * Override the end year for the timeline range.
-   * If not set, it will be auto-detected from events.
-   */
+  /** Override the automatically detected timeline end year. */
   @property({ type: Number, attribute: 'end-year' })
   endYear?: number;
 
-  /**
-   * Display the timeline vertically instead of horizontally.
-   */
+  /** Display the timeline vertically instead of horizontally. */
   @property({ type: Boolean })
   vertical = false;
 
-  /**
-   * Display events in a simple list format without timeline axis.
-   * Overrides vertical/horizontal layout when enabled.
-   */
+  /** Display events as a list without an axis. */
   @property({ type: Boolean })
   list = false;
 
-  /**
-   * Accessible label for the timeline region.
-   */
+  /** Accessible label for the timeline region. */
   @property({ type: String })
   label = '';
 
@@ -86,472 +81,539 @@ export class TimelineComponent extends LitElement {
   private _eventLayouts: EventLayout[] = [];
 
   @state()
-  private _svgData: SVGData = {
-    axisPath: '',
-    connectors: [],
-    dots: [],
-    markers: [],
-  };
+  private _svgData: SVGData = EMPTY_SVG_DATA;
 
-  private _resizeObserver = new ResizeObserver(() => this._calculateLayout());
-  private readonly MIN_CONTENT_DIM = 1800;
+  private _events: TimelineEvent[] = [];
+  private _managedEvents: TimelineEvent[] = [];
+  private _eventMutationObserver = new MutationObserver(() => this._syncEvents());
+  private _eventResizeObserver = new ResizeObserver(() => this._scheduleLayout());
+  private _wrapperResizeObserver = new ResizeObserver(() => this._scheduleLayout());
+  private _layoutScheduled = false;
+  private _reorderingEvents = false;
   private _activeEventIndex = 0;
-  private _boundKeyHandler = this._handleKeyDown.bind(this);
+  private readonly _warnedRanges = new Set<string>();
+  private readonly MIN_CONTENT_DIM = 1800;
 
   override connectedCallback(): void {
     super.connectedCallback();
-    this.addEventListener('keydown', this._boundKeyHandler);
+    this.addEventListener('keydown', this._handleKeyDown);
+    this.addEventListener('focusin', this._handleFocusIn);
+    void this.updateComplete.then(() => {
+      if (this.isConnected) {
+        this._observeWrapper();
+        this._syncEvents();
+      }
+    });
   }
 
   override disconnectedCallback(): void {
-    this._resizeObserver.disconnect();
-    this.removeEventListener('keydown', this._boundKeyHandler);
+    this._eventMutationObserver.disconnect();
+    this._eventResizeObserver.disconnect();
+    this._wrapperResizeObserver.disconnect();
+    this.removeEventListener('keydown', this._handleKeyDown);
+    this.removeEventListener('focusin', this._handleFocusIn);
+    if (this._layoutScheduled) {
+      this._layoutScheduled = false;
+    }
     super.disconnectedCallback();
   }
 
-  override async firstUpdated(): Promise<void> {
-    // Move observer setup to firstUpdated to ensure element exists
-    const scrollWrapper = this.shadowRoot?.querySelector('.scroll-wrapper');
-    if (scrollWrapper) {
-      this._resizeObserver.observe(scrollWrapper);
-    }
-    // Wait for next frame to ensure DOM is ready
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    this._calculateLayout();
-    this._initRovingTabindex();
+  protected override firstUpdated(): void {
+    this._observeWrapper();
+    this._syncEvents();
   }
 
-  override updated(changedProperties: Map<string, unknown>): void {
-    // Recalculate layout when vertical or list mode changes
-    if (changedProperties.has('vertical') || changedProperties.has('list')) {
-      this._calculateLayout();
+  protected override updated(changedProperties: PropertyValues<TimelineComponent>): void {
+    this._observeWrapper();
+    if (
+      changedProperties.has('vertical') ||
+      changedProperties.has('list') ||
+      changedProperties.has('startYear') ||
+      changedProperties.has('endYear')
+    ) {
+      this._refreshEventAttributes();
+      this._scheduleLayout();
     }
   }
 
-  /**
-   * Initialize roving tabindex pattern for keyboard navigation
-   */
-  private _initRovingTabindex(): void {
-    const events = this._getEventElements();
-    events.forEach((event, index) => {
-      event.setAttribute('tabindex', index === 0 ? '0' : '-1');
+  private _observeWrapper(): void {
+    if (!this.isConnected) {
+      return;
+    }
+    const wrapper = this.shadowRoot?.querySelector('.scroll-wrapper');
+    if (wrapper) {
+      this._wrapperResizeObserver.disconnect();
+      this._wrapperResizeObserver.observe(wrapper);
+    }
+  }
+
+  private _handleSlotChange = (): void => {
+    if (!this._reorderingEvents) {
+      this._syncEvents();
+    }
+  };
+
+  private _getDirectEvents(): TimelineEvent[] {
+    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('#timeline-events');
+    if (!slot) {
+      return [];
+    }
+    return slot
+      .assignedElements({ flatten: false })
+      .filter((element): element is TimelineEvent => element.tagName === 'TIMELINE-EVENT');
+  }
+
+  private _syncEvents(): void {
+    if (!this.isConnected) {
+      return;
+    }
+
+    const current = this._getDirectEvents();
+    const activeElement = document.activeElement;
+    const focused = this._events.find(
+      (event) =>
+        event === activeElement ||
+        (activeElement instanceof Node && event.contains(activeElement)) ||
+        (activeElement instanceof Node && event.shadowRoot?.contains(activeElement))
+    );
+
+    for (const event of this._managedEvents) {
+      if (!current.includes(event)) {
+        this._restoreStandaloneEvent(event);
+      }
+    }
+
+    this._eventMutationObserver.disconnect();
+    this._eventResizeObserver.disconnect();
+
+    const valid = current
+      .filter((event) => isValidDate(event.date))
+      .sort((a, b) => this._timestamp(a.date) - this._timestamp(b.date));
+    const invalid = current.filter((event) => !isValidDate(event.date));
+    const ordered = [...valid, ...invalid];
+
+    if (ordered.some((event, index) => current[index] !== event)) {
+      this._reorderingEvents = true;
+      for (const event of ordered) {
+        this.append(event);
+      }
+      queueMicrotask(() => {
+        this._reorderingEvents = false;
+      });
+    }
+
+    this._events = valid;
+    this._managedEvents = ordered;
+    for (const event of ordered) {
+      event.setAttribute('data-timeline-managed', '');
+      if (!valid.includes(event)) {
+        event.tabIndex = -1;
+      }
+      this._eventMutationObserver.observe(event, {
+        attributes: true,
+        attributeFilter: ['date'],
+      });
+      this._eventResizeObserver.observe(event);
+    }
+
+    this._refreshEventAttributes();
+    this._refreshRovingTabindex(focused);
+    this._scheduleLayout();
+  }
+
+  private _restoreStandaloneEvent(event: TimelineEvent): void {
+    event.removeAttribute('data-timeline-managed');
+    event.removeAttribute('data-layout-mode');
+    event.removeAttribute('data-layout-ready');
+    event.removeAttribute('role');
+    event.style.position = '';
+    event.style.left = '';
+    event.style.top = '';
+    event.style.maxWidth = '';
+    event.style.visibility = '';
+    if (!event.getAttribute('style')) {
+      event.removeAttribute('style');
+    }
+    event.tabIndex = 0;
+  }
+
+  private _mode(): 'horizontal' | 'vertical' | 'list' {
+    return this.list ? 'list' : this.vertical ? 'vertical' : 'horizontal';
+  }
+
+  private _refreshEventAttributes(): void {
+    const mode = this._mode();
+    for (const event of this._getDirectEvents()) {
+      event.setAttribute('data-layout-mode', mode);
+      if (this.list) {
+        event.setAttribute('role', 'listitem');
+      } else {
+        event.removeAttribute('role');
+      }
+    }
+  }
+
+  private _refreshRovingTabindex(preferred?: TimelineEvent): void {
+    const active = preferred && this._events.includes(preferred) ? preferred : this._events[0];
+    this._activeEventIndex = Math.max(0, active ? this._events.indexOf(active) : 0);
+    this._events.forEach((event, index) => {
+      event.tabIndex = index === this._activeEventIndex ? 0 : -1;
     });
-    this._activeEventIndex = 0;
   }
 
-  /**
-   * Get all timeline-event children sorted by date
-   */
-  private _getEventElements(): HTMLElement[] {
-    return Array.from(this.querySelectorAll('timeline-event')) as HTMLElement[];
+  private _directEventFromPath(path: EventTarget[]): TimelineEvent | undefined {
+    return path.find(
+      (target): target is TimelineEvent =>
+        target instanceof HTMLElement && this._events.includes(target as TimelineEvent)
+    );
   }
 
-  /**
-   * Handle keyboard navigation for roving tabindex
-   */
-  private _handleKeyDown(event: KeyboardEvent): void {
-    const events = this._getEventElements();
-    if (events.length === 0) {
+  private _handleFocusIn = (event: FocusEvent): void => {
+    const focused = this._directEventFromPath(event.composedPath());
+    if (!focused) {
+      return;
+    }
+    this._activeEventIndex = this._events.indexOf(focused);
+    this._events.forEach((item) => {
+      item.tabIndex = item === focused ? 0 : -1;
+    });
+  };
+
+  private _handleKeyDown = (event: KeyboardEvent): void => {
+    const focused = this._directEventFromPath(event.composedPath());
+    if (!focused || this._events.length === 0) {
       return;
     }
 
-    // Only handle if focus is on a timeline-event
-    const focusedEvent = document.activeElement;
-    if (!focusedEvent || focusedEvent.tagName.toLowerCase() !== 'timeline-event') {
-      return;
-    }
-
-    const currentIndex = events.indexOf(focusedEvent as HTMLElement);
-    if (currentIndex === -1) {
-      return;
-    }
-
-    let newIndex = currentIndex;
-    const isHorizontal = !this.vertical && !this.list;
-    const isVerticalNav = this.vertical || this.list;
+    const currentIndex = this._events.indexOf(focused);
+    let nextIndex = currentIndex;
+    const horizontal = !this.vertical && !this.list;
 
     switch (event.key) {
       case 'ArrowRight':
-        if (isHorizontal) {
-          newIndex = Math.min(currentIndex + 1, events.length - 1);
+        if (horizontal) {
+          nextIndex = Math.min(currentIndex + 1, this._events.length - 1);
         }
         break;
       case 'ArrowLeft':
-        if (isHorizontal) {
-          newIndex = Math.max(currentIndex - 1, 0);
+        if (horizontal) {
+          nextIndex = Math.max(currentIndex - 1, 0);
         }
         break;
       case 'ArrowDown':
-        if (isVerticalNav) {
-          newIndex = Math.min(currentIndex + 1, events.length - 1);
+        if (!horizontal) {
+          nextIndex = Math.min(currentIndex + 1, this._events.length - 1);
         }
         break;
       case 'ArrowUp':
-        if (isVerticalNav) {
-          newIndex = Math.max(currentIndex - 1, 0);
+        if (!horizontal) {
+          nextIndex = Math.max(currentIndex - 1, 0);
         }
         break;
       case 'Home':
-        newIndex = 0;
+        nextIndex = 0;
         break;
       case 'End':
-        newIndex = events.length - 1;
+        nextIndex = this._events.length - 1;
         break;
       default:
         return;
     }
 
-    if (newIndex !== currentIndex) {
+    if (nextIndex !== currentIndex) {
       event.preventDefault();
-      this._setActiveEvent(events, newIndex);
+      this._setActiveEvent(nextIndex);
     }
+  };
+
+  private _setActiveEvent(index: number): void {
+    this._activeEventIndex = index;
+    this._events.forEach((event, eventIndex) => {
+      event.tabIndex = eventIndex === index ? 0 : -1;
+    });
+    const active = this._events[index];
+    active.focus();
+    active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }
 
-  /**
-   * Set the active event for roving tabindex
-   */
-  private _setActiveEvent(events: HTMLElement[], index: number): void {
-    // Remove tabindex from current active
-    events[this._activeEventIndex]?.setAttribute('tabindex', '-1');
+  private _scheduleLayout(): void {
+    if (this._layoutScheduled || !this.isConnected) {
+      return;
+    }
+    this._layoutScheduled = true;
+    requestAnimationFrame(() => {
+      this._layoutScheduled = false;
+      if (this.isConnected) {
+        this._calculateLayout();
+      }
+    });
+  }
 
-    // Set new active
-    this._activeEventIndex = index;
-    const newActive = events[index];
-    newActive.setAttribute('tabindex', '0');
-    newActive.focus();
+  private _resetOwnedLayout(): HTMLElement | null {
+    const container = this.shadowRoot?.querySelector<HTMLElement>('.timeline-container');
+    if (!container) {
+      return null;
+    }
+    container.style.minWidth = '';
+    container.style.minHeight = '';
+    container.style.width = '';
+    container.style.height = '';
+    for (const event of this._getDirectEvents()) {
+      event.removeAttribute('data-layout-ready');
+      event.style.position = '';
+      event.style.left = '';
+      event.style.top = '';
+      event.style.maxWidth = '';
+      event.style.visibility = '';
+    }
+    return container;
+  }
 
-    // Scroll the event into view if needed
-    newActive.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  private _clearLayout(container?: HTMLElement): void {
+    if (container) {
+      container.style.minWidth = '';
+      container.style.minHeight = '';
+      container.style.width = '';
+      container.style.height = '';
+    }
+    this._eventLayouts = [];
+    this._svgData = { ...EMPTY_SVG_DATA };
+    for (const event of this._getDirectEvents()) {
+      event.removeAttribute('data-layout-ready');
+    }
   }
 
   private _calculateLayout(): void {
-    if (this.list) {
-      this._calculateListLayout();
-    } else if (this.vertical) {
-      this._calculateVerticalLayout();
-    } else {
-      this._calculateHorizontalLayout();
-    }
-  }
-
-  private _calculateListLayout(): void {
-    const container = this.shadowRoot?.querySelector('.timeline-container') as HTMLElement;
+    const container = this._resetOwnedLayout();
     if (!container) {
       return;
     }
+    this._refreshEventAttributes();
 
-    // Reset container sizing for list mode
-    container.style.minWidth = '';
-    container.style.minHeight = '';
-    container.style.height = '';
-    container.style.width = '';
-
-    const events = Array.from(this.querySelectorAll('timeline-event'));
-    if (events.length === 0) {
+    if (this._events.length === 0) {
+      this._clearLayout(container);
       return;
     }
 
-    // Sort events by date
-    const sortedEvents = events
-      .map((el) => ({
-        el,
-        date: el.date,
-        width: el.offsetWidth,
-        height: el.offsetHeight,
-      }))
-      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-
-    // In list mode, we just need to track events for keyboard navigation
-    // Positioning is handled by CSS flexbox/grid
-    this._eventLayouts = sortedEvents.map((event) => ({
-      ...event,
-      x: 0,
-      y: 0,
-    }));
-
-    // Clear SVG data for list mode (no axis/connectors)
-    this._svgData = {
-      axisPath: '',
-      connectors: [],
-      dots: [],
-      markers: [],
-    };
+    if (this.list) {
+      this._calculateListLayout(container);
+    } else if (this.vertical) {
+      this._calculateVerticalLayout(container);
+    } else {
+      this._calculateHorizontalLayout(container);
+    }
   }
 
-  /**
-   * Get date range and collect all timeline events
-   */
+  private _calculateListLayout(container: HTMLElement): void {
+    const layouts = this._measuredEvents();
+    this._eventLayouts = layouts.map((event) => ({ ...event, x: 0, y: 0 }));
+    this._svgData = { ...EMPTY_SVG_DATA };
+    for (const event of this._events) {
+      event.style.position = 'relative';
+      event.style.visibility = 'visible';
+      event.setAttribute('data-layout-ready', '');
+    }
+    container.style.height = '';
+  }
+
+  private _measuredEvents(): DateRangeData['sortedEvents'] {
+    return this._events.map((el) => ({
+      el,
+      date: el.date,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
+    }));
+  }
+
+  private _timestamp(date: string): number {
+    return new Date(`${date}T12:00:00Z`).getTime();
+  }
+
   private _getDateRangeAndEvents(): DateRangeData | null {
-    const events = Array.from(this.querySelectorAll('timeline-event'));
-    if (events.length === 0) {
+    const sortedEvents = this._measuredEvents();
+    if (sortedEvents.length === 0) {
       return null;
     }
 
-    let startDate: Date;
-    let endDate: Date;
+    const timestamps = sortedEvents.map((event) => this._timestamp(event.date));
+    const minDate = new Date(Math.min(...timestamps));
+    const maxDate = new Date(Math.max(...timestamps));
 
-    // Use provided years or calculate from events
-    if (this.startYear && this.endYear) {
-      startDate = new Date(`${this.startYear}-01-01T12:00:00Z`);
-      endDate = new Date(`${this.endYear}-12-31T12:00:00Z`);
-    } else {
-      // Extract dates from events and add padding
-      const eventDates = events.map((e) => new Date(`${e.date}T12:00:00Z`));
-      const minDate = new Date(Math.min(...eventDates.map((d) => d.getTime())));
-      const maxDate = new Date(Math.max(...eventDates.map((d) => d.getTime())));
+    const startDate = new Date(
+      Date.UTC(minDate.getUTCFullYear(), minDate.getUTCMonth() - 2, 1, 12)
+    );
+    const endDate = new Date(Date.UTC(maxDate.getUTCFullYear(), maxDate.getUTCMonth() + 3, 0, 12));
 
-      startDate = new Date(minDate);
-      startDate.setMonth(startDate.getMonth() - 2);
-
-      endDate = new Date(maxDate);
-      endDate.setMonth(endDate.getMonth() + 2);
+    if (this.startYear !== undefined) {
+      startDate.setTime(Date.UTC(this.startYear, 0, 1, 12));
+    }
+    if (this.endYear !== undefined) {
+      endDate.setTime(Date.UTC(this.endYear, 11, 31, 12));
     }
 
-    // Sort events by date and collect dimensions
-    const sortedEvents = events
-      .map((el) => ({
-        el,
-        date: el.date,
-        width: el.offsetWidth,
-        height: el.offsetHeight,
-      }))
-      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+    if (startDate.getTime() > endDate.getTime()) {
+      const warning = `[timeline-component] Invalid range ${this.startYear}–${this.endYear}; start-year must not exceed end-year.`;
+      if (!this._warnedRanges.has(warning)) {
+        this._warnedRanges.add(warning);
+        console.warn(warning);
+      }
+      return null;
+    }
 
     return { startDate, endDate, sortedEvents };
   }
 
-  private _calculateHorizontalLayout(): void {
-    const container = this.shadowRoot?.querySelector('.timeline-container') as HTMLElement;
-    if (!container) {
-      return;
-    }
-
-    container.style.minWidth = `${this.MIN_CONTENT_DIM}px`;
-    container.style.minHeight = '';
-
-    const contentWidth = Math.max(container.offsetWidth, this.MIN_CONTENT_DIM);
+  private _calculateHorizontalLayout(container: HTMLElement): void {
     const data = this._getDateRangeAndEvents();
     if (!data) {
+      this._clearLayout(container);
       return;
     }
 
-    const { startDate, endDate, sortedEvents } = data;
-    const totalDurationMs = endDate.getTime() - startDate.getTime();
+    const maxCardWidth = Math.max(...data.sortedEvents.map((event) => event.width));
+    const margin = Math.max(60, maxCardWidth / 2 + 30);
+    const wrapperWidth = container.parentElement?.clientWidth || container.clientWidth;
+    const contentWidth = Math.max(wrapperWidth, this.MIN_CONTENT_DIM, margin * 2 + 1);
+    container.style.minWidth = `${contentWidth}px`;
 
-    // Convert date to X position on timeline
-    const dateToX = (dateStr: string): number => {
-      const eventDate = new Date(`${dateStr}T12:00:00Z`).getTime();
-      const progress = (eventDate - startDate.getTime()) / totalDurationMs;
-      // Leave 60px margin on each side
-      return 60 + progress * (contentWidth - 120);
-    };
+    const duration = data.endDate.getTime() - data.startDate.getTime();
+    const dateToX = (date: string): number =>
+      margin +
+      ((this._timestamp(date) - data.startDate.getTime()) / duration) * (contentWidth - 2 * margin);
 
-    const eventLayouts: EventLayout[] = [];
-    const rowLastX: number[] = []; // Track last used position in each row
-    // Vertical gap between rows (default 330px)
-    const vGap = parseInt(getComputedStyle(this).getPropertyValue('--timeline-h-row-gap') || '330');
-
-    // Position events to avoid overlap
-    for (const event of sortedEvents) {
-      const startX = dateToX(event.date) - event.width / 2;
-      let placed = false;
-
-      // Try to place in existing rows
-      for (let i = 0; i < rowLastX.length; i++) {
-        if (startX > rowLastX[i]) {
-          eventLayouts.push({
-            ...event,
-            x: startX,
-            y: 20 + i * vGap,
-          });
-          // Update last used position in this row
-          rowLastX[i] = startX + event.width + 30;
-          placed = true;
-          break;
-        }
+    const rowEnds: number[] = [];
+    const rowGap =
+      parseFloat(getComputedStyle(this).getPropertyValue('--timeline-h-row-gap')) || 330;
+    const layouts: EventLayout[] = [];
+    for (const event of data.sortedEvents) {
+      const x = Math.max(0, dateToX(event.date) - event.width / 2);
+      let row = rowEnds.findIndex((end) => x > end);
+      if (row === -1) {
+        row = rowEnds.length;
       }
-
-      // Create new row if needed
-      if (!placed) {
-        const i = rowLastX.length;
-        eventLayouts.push({
-          ...event,
-          x: startX,
-          y: 20 + i * vGap,
-        });
-        rowLastX.push(startX + event.width + 30);
-      }
+      layouts.push({ ...event, x, y: 20 + row * rowGap });
+      rowEnds[row] = x + event.width + 30;
     }
 
-    this._eventLayouts = eventLayouts;
-
-    // Set container height based on number of rows
-    const requiredHeight = 20 + rowLastX.length * vGap + 150;
+    const eventBottom = Math.max(...layouts.map((layout) => layout.y + layout.height));
+    const axisY = eventBottom + 60;
+    const requiredHeight = axisY + 45;
     container.style.height = `${requiredHeight}px`;
 
-    const axisY = requiredHeight - 60; // Position timeline axis
-
-    // Generate timeline markers and SVG elements
-    const markers = this._generateMarkers(
-      startDate,
-      endDate,
-      totalDurationMs,
-      dateToX,
-      axisY,
-      false
-    );
-
+    this._eventLayouts = layouts;
     this._svgData = {
-      axisPath: `M 60,${axisY} H ${contentWidth - 60}`,
-      connectors: eventLayouts.map((l) => `M ${dateToX(l.date)},${l.y + l.height} V ${axisY}`),
-      dots: eventLayouts.map((l) => ({
-        cx: dateToX(l.date),
-        cy: axisY,
-      })),
-      markers,
+      axisPath: `M ${margin},${axisY} H ${contentWidth - margin}`,
+      connectors: layouts.map(
+        (layout) => `M ${dateToX(layout.date)},${layout.y + layout.height} V ${axisY}`
+      ),
+      dots: layouts.map((layout) => ({ cx: dateToX(layout.date), cy: axisY })),
+      markers: this._generateMarkers(data.startDate, data.endDate, duration, dateToX, axisY, false),
     };
+    this._applyLayouts(layouts, false);
   }
 
-  private _calculateVerticalLayout(): void {
-    const container = this.shadowRoot?.querySelector('.timeline-container') as HTMLElement;
-    if (!container) {
-      return;
-    }
-
-    container.style.minHeight = `${this.MIN_CONTENT_DIM}px`;
-    container.style.minWidth = '';
-
-    const contentHeight = Math.max(container.offsetHeight, this.MIN_CONTENT_DIM);
+  private _calculateVerticalLayout(container: HTMLElement): void {
     const data = this._getDateRangeAndEvents();
     if (!data) {
+      this._clearLayout(container);
       return;
     }
 
-    const { startDate, endDate, sortedEvents } = data;
-    const totalDurationMs = endDate.getTime() - startDate.getTime();
-
-    // Convert date to Y position on timeline
-    const dateToY = (dateStr: string): number => {
-      const eventDate = new Date(`${dateStr}T12:00:00Z`).getTime();
-      const progress = (eventDate - startDate.getTime()) / totalDurationMs;
-      // Leave 60px margin on top and bottom
-      return 60 + progress * (contentHeight - 120);
-    };
-
-    const eventLayouts: EventLayout[] = [];
-    const columnLastY: number[] = []; // Track last used position in each column
-    const axisX = container.offsetWidth / 2; // Center axis
-    // Horizontal gap between columns (default 100px)
-    const hGap = parseInt(
-      getComputedStyle(this).getPropertyValue('--timeline-v-column-gap') || '100'
-    );
-
-    // Position events alternating left and right of timeline
-    for (const event of sortedEvents) {
-      const startY = dateToY(event.date) - event.height / 2;
-      let placed = false;
-
-      // Try to place in existing columns
-      for (let i = 0; i < columnLastY.length; i++) {
-        if (startY > (columnLastY[i] || 0)) {
-          // Alternate sides: even indices = left, odd = right
-          const side: 'left' | 'right' = i % 2 === 0 ? 'left' : 'right';
-          const col = Math.floor(i / 2); // Column number
-
-          // Calculate X position based on side and column
-          const x =
-            side === 'left'
-              ? axisX - hGap - event.width - col * (event.width + 15)
-              : axisX + hGap + col * (event.width + 15);
-
-          eventLayouts.push({
-            ...event,
-            x,
-            y: startY,
-            side,
-          });
-
-          // Update last used position in this column
-          columnLastY[i] = startY + event.height + 15;
-          placed = true;
-          break;
-        }
-      }
-
-      // Create new column if needed
-      if (!placed) {
-        const i = columnLastY.length;
-        const side: 'left' | 'right' = i % 2 === 0 ? 'left' : 'right';
-        const col = Math.floor(i / 2);
-
-        const x =
-          side === 'left'
-            ? axisX - hGap - event.width - col * (event.width + 15)
-            : axisX + hGap + col * (event.width + 15);
-
-        eventLayouts.push({
-          ...event,
-          x,
-          y: startY,
-          side,
-        });
-
-        columnLastY.push(startY + event.height + 15);
+    const containerWidth = container.parentElement?.clientWidth || container.clientWidth;
+    const mobile = containerWidth < 600;
+    const availableMobileWidth = Math.max(0, containerWidth - 70);
+    if (mobile) {
+      for (const event of this._events) {
+        event.style.maxWidth = `${availableMobileWidth}px`;
       }
     }
 
-    this._eventLayouts = eventLayouts;
-    container.style.width = `${container.offsetWidth}px`;
+    const measured = data.sortedEvents.map((event) => ({
+      ...event,
+      width: mobile ? Math.min(event.width, availableMobileWidth) : event.width,
+    }));
+    const maxCardHeight = Math.max(...measured.map((event) => event.height));
+    const margin = Math.max(60, maxCardHeight / 2 + 30);
+    const contentHeight = Math.max(this.MIN_CONTENT_DIM, margin * 2 + 1);
+    container.style.minHeight = `${contentHeight}px`;
 
-    // Generate timeline markers and SVG elements
-    const markers = this._generateMarkers(
-      startDate,
-      endDate,
-      totalDurationMs,
-      dateToY,
-      axisX,
-      true
+    const duration = data.endDate.getTime() - data.startDate.getTime();
+    const dateToY = (date: string): number =>
+      margin +
+      ((this._timestamp(date) - data.startDate.getTime()) / duration) *
+        (contentHeight - 2 * margin);
+    const axisX = mobile ? 24 : containerWidth / 2;
+    const gap =
+      parseFloat(getComputedStyle(this).getPropertyValue('--timeline-v-column-gap')) || 100;
+
+    const layouts: EventLayout[] = measured.map((event, index) => {
+      const side: 'left' | 'right' = mobile || index % 2 === 1 ? 'right' : 'left';
+      const x = mobile
+        ? 54
+        : side === 'left'
+          ? Math.max(0, axisX - gap - event.width)
+          : axisX + gap;
+      return {
+        ...event,
+        x,
+        y: Math.max(0, dateToY(event.date) - event.height / 2),
+        side,
+      };
+    });
+
+    const requiredWidth = Math.max(
+      containerWidth,
+      ...layouts.map((layout) => layout.x + layout.width)
     );
+    if (requiredWidth > containerWidth) {
+      container.style.minWidth = `${requiredWidth}px`;
+    }
 
+    this._eventLayouts = layouts;
     this._svgData = {
-      axisPath: `M ${axisX},60 V ${contentHeight - 60}`,
-      connectors: eventLayouts.map(
-        (l) => `M ${l.side === 'left' ? l.x + l.width : l.x},${dateToY(l.date)} H ${axisX}`
+      axisPath: `M ${axisX},${margin} V ${contentHeight - margin}`,
+      connectors: layouts.map(
+        (layout) =>
+          `M ${layout.side === 'left' ? layout.x + layout.width : layout.x},${dateToY(layout.date)} H ${axisX}`
       ),
-      dots: eventLayouts.map((l) => ({
-        cx: axisX,
-        cy: dateToY(l.date),
-      })),
-      markers,
+      dots: layouts.map((layout) => ({ cx: axisX, cy: dateToY(layout.date) })),
+      markers: this._generateMarkers(data.startDate, data.endDate, duration, dateToY, axisX, true),
     };
+    this._applyLayouts(layouts, false);
   }
 
-  /**
-   * Generate timeline markers (months or years) based on time span
-   */
+  private _applyLayouts(layouts: EventLayout[], list: boolean): void {
+    for (const layout of layouts) {
+      layout.el.style.position = list ? 'relative' : 'absolute';
+      layout.el.style.left = list ? '' : `${layout.x}px`;
+      layout.el.style.top = list ? '' : `${layout.y}px`;
+      layout.el.style.visibility = 'visible';
+      layout.el.setAttribute('data-layout-ready', '');
+    }
+  }
+
   private _generateMarkers(
     startDate: Date,
     endDate: Date,
     totalDurationMs: number,
-    posFunc: (dateStr: string) => number,
+    posFunc: (date: string) => number,
     axisPos: number,
     isVertical: boolean
   ): MarkerData[] {
     const markers: MarkerData[] = [];
     const twoYearsInMs = 2 * 365.25 * 24 * 60 * 60 * 1000;
 
-    // Show monthly markers for timelines under 2 years
     if (totalDurationMs <= twoYearsInMs) {
-      const currentMonth = new Date(startDate);
-      currentMonth.setDate(1); // Start from first day of month
-
+      const currentMonth = new Date(
+        Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1, 12)
+      );
       while (currentMonth <= endDate) {
         const pos = posFunc(currentMonth.toISOString().slice(0, 10));
         const text = currentMonth.toLocaleDateString('en-US', {
           month: 'short',
           year: '2-digit',
+          timeZone: 'UTC',
         });
-
         if (isVertical) {
           markers.push({
             line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
@@ -563,125 +625,99 @@ export class TimelineComponent extends LitElement {
             text: { content: text, x: pos, y: axisPos + 25, anchor: 'middle' },
           });
         }
-
-        currentMonth.setMonth(currentMonth.getMonth() + 1);
+        currentMonth.setUTCMonth(currentMonth.getUTCMonth() + 1);
       }
     } else {
-      // Show 5-year markers for longer timelines
-      for (let year = startDate.getFullYear(); year <= endDate.getFullYear(); year++) {
-        if (year % 5 === 0) {
-          const pos = posFunc(`${year}-01-01`);
-
-          if (isVertical) {
-            markers.push({
-              line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
-              text: { content: year, x: axisPos - 20, y: pos + 4, anchor: 'end' },
-            });
-          } else {
-            markers.push({
-              line: { x1: pos, y1: axisPos - 10, x2: pos, y2: axisPos + 10 },
-              text: { content: year, x: pos, y: axisPos + 25, anchor: 'middle' },
-            });
-          }
+      for (let year = startDate.getUTCFullYear(); year <= endDate.getUTCFullYear(); year++) {
+        if (year % 5 !== 0) {
+          continue;
+        }
+        const pos = posFunc(`${year}-01-01`);
+        if (isVertical) {
+          markers.push({
+            line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
+            text: { content: year, x: axisPos - 20, y: pos + 4, anchor: 'end' },
+          });
+        } else {
+          markers.push({
+            line: { x1: pos, y1: axisPos - 10, x2: pos, y2: axisPos + 10 },
+            text: { content: year, x: pos, y: axisPos + 25, anchor: 'middle' },
+          });
         }
       }
     }
-
     return markers;
   }
 
   override render() {
-    // Apply calculated positions to timeline events after render
-    this.updateComplete.then(() => {
-      if (this.list) {
-        // In list mode, reset absolute positioning and make visible
-        this._eventLayouts.forEach((layout) => {
-          layout.el.style.position = 'relative';
-          layout.el.style.left = '';
-          layout.el.style.top = '';
-          layout.el.style.visibility = 'visible';
-        });
-      } else {
-        this._eventLayouts.forEach((layout) => {
-          layout.el.style.position = 'absolute';
-          layout.el.style.left = `${layout.x}px`;
-          layout.el.style.top = `${layout.y}px`;
-          layout.el.style.visibility = 'visible';
-        });
-      }
-    });
-
     const dotRadius = getComputedStyle(this).getPropertyValue('--timeline-dot-size') || '5';
-    const containerClass = this.list ? 'timeline-container list-view' : 'timeline-container';
-
     return html`
       <div
         class="scroll-wrapper${this.list ? ' list-mode' : ''}"
         part="scroll-wrapper"
         role="region"
-        aria-label="${this.label}"
+        aria-label=${this.label.trim() || 'Timeline'}
         tabindex="0"
       >
-        <div class="${containerClass}" part="container">
-          <slot></slot>
-
+        <div
+          class="timeline-container${this.list ? ' list-view' : ''}"
+          part="container"
+          data-layout-mode=${this._mode()}
+          data-layout-ready=${this._eventLayouts.length > 0 ? 'true' : 'false'}
+        >
+          <slot
+            id="timeline-events"
+            role=${this.list ? 'list' : 'presentation'}
+            @slotchange=${this._handleSlotChange}
+          ></slot>
           ${this.list
             ? ''
             : html`<svg class="svg-layer" part="svg-layer" aria-hidden="true">
-                <!-- Timeline axis -->
-                <path
-                  d="${this._svgData.axisPath}"
-                  stroke="var(--timeline-axis-color)"
-                  stroke-width="var(--timeline-axis-width, 2)"
-                  part="axis-line"
-                />
-
-                <!-- Event connectors -->
+                ${this._svgData.axisPath
+                  ? svg`<path
+                      d=${this._svgData.axisPath}
+                      stroke="var(--timeline-axis-color)"
+                      stroke-width="var(--timeline-axis-width, 2)"
+                      part="axis-line"
+                    ></path>`
+                  : ''}
                 ${this._svgData.connectors.map(
-                  (pathData) => svg`
-              <path
-                d="${pathData}"
-                stroke="var(--timeline-connector-color)"
-                stroke-width="var(--timeline-connector-width, 2)"
-                fill="none"
-                part="connector-line"
-              ></path>
-            `
+                  (pathData) => svg`<path
+                    d=${pathData}
+                    stroke="var(--timeline-connector-color)"
+                    stroke-width="var(--timeline-connector-width, 2)"
+                    fill="none"
+                    part="connector-line"
+                  ></path>`
                 )}
-
-                <!-- Timeline markers -->
                 ${this._svgData.markers.map(
-                  (m) => svg`
-              <line
-                x1="${m.line.x1}"
-                y1="${m.line.y1}"
-                x2="${m.line.x2}"
-                y2="${m.line.y2}"
-                stroke="var(--timeline-marker-color)"
-                stroke-width="2"
-                part="marker-tick"
-              />
-              <text
-                class="marker-text"
-                x="${m.text.x}"
-                y="${m.text.y}"
-                text-anchor="${m.text.anchor}"
-                part="marker-text"
-              >${m.text.content}</text>
-            `
+                  (marker) => svg`
+                    <line
+                      x1=${marker.line.x1}
+                      y1=${marker.line.y1}
+                      x2=${marker.line.x2}
+                      y2=${marker.line.y2}
+                      stroke="var(--timeline-marker-color)"
+                      stroke-width="2"
+                      part="marker-tick"
+                    ></line>
+                    <text
+                      class="marker-text"
+                      x=${marker.text.x}
+                      y=${marker.text.y}
+                      text-anchor=${marker.text.anchor}
+                      part="marker-text"
+                    >${marker.text.content}</text>
+                  `
                 )}
-
-                <!-- Event dots -->
                 ${this._svgData.dots.map(
-                  (dot) => svg`
-              <circle
-                cx="${dot.cx}"
-                cy="${dot.cy}"
-                r="${dotRadius}"
-                fill="var(--timeline-dot-color)"
-                part="dot"
-              />
-            `
+                  (dot) => svg`<circle
+                    cx=${dot.cx}
+                    cy=${dot.cy}
+                    r=${dotRadius}
+                    fill="var(--timeline-dot-color)"
+                    part="dot"
+                  ></circle>`
                 )}
               </svg>`}
         </div>
