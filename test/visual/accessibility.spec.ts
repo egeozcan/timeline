@@ -115,17 +115,21 @@ test.describe('@accessibility Accessibility Tests', () => {
           .shadowRoot!.querySelector('[part="axis-line"]')!
           .getAttribute('d')!;
         const axisX = Number(/^M ([\d.]+),/.exec(axisPath)?.[1]);
-        const eventRects = Array.from(timeline.querySelectorAll('timeline-event')).map((event) => {
-          const rect = event.getBoundingClientRect();
-          return {
-            left: rect.left,
-            right: rect.right,
-            layoutLeft: Number.parseFloat((event as HTMLElement).style.left),
-          };
-        });
+        const eventGeometry = Array.from(timeline.querySelectorAll('timeline-event')).map(
+          (event) => {
+            const cardRect = event
+              .shadowRoot!.querySelector<HTMLElement>('.card')!
+              .getBoundingClientRect();
+            return {
+              cardLeft: cardRect.left,
+              cardRight: cardRect.right,
+              layoutLeft: Number.parseFloat((event as HTMLElement).style.left),
+            };
+          }
+        );
         return {
           axisX,
-          eventRects,
+          eventGeometry,
           wrapperClientWidth: wrapper.clientWidth,
           wrapperScrollWidth: wrapper.scrollWidth,
           documentClientWidth: document.documentElement.clientWidth,
@@ -133,11 +137,11 @@ test.describe('@accessibility Accessibility Tests', () => {
         };
       });
 
-      expect(geometry.eventRects.length).toBeGreaterThan(1);
-      for (const rect of geometry.eventRects) {
-        expect(rect.layoutLeft).toBeGreaterThanOrEqual(geometry.axisX + 30);
-        expect(rect.left).toBeGreaterThanOrEqual(0);
-        expect(rect.right).toBeLessThanOrEqual(375);
+      expect(geometry.eventGeometry.length).toBeGreaterThan(1);
+      for (const event of geometry.eventGeometry) {
+        expect(event.layoutLeft).toBeGreaterThanOrEqual(geometry.axisX + 30);
+        expect(event.cardLeft).toBeGreaterThanOrEqual(0);
+        expect(event.cardRight).toBeLessThanOrEqual(375);
       }
       expect(geometry.wrapperScrollWidth).toBeLessThanOrEqual(geometry.wrapperClientWidth);
       expect(geometry.documentScrollWidth).toBeLessThanOrEqual(geometry.documentClientWidth);

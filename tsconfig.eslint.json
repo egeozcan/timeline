@@ -7,7 +7,8 @@
     "src/**/*.ts",
     "test/**/*.ts",
     "stories/**/*.ts",
-    ".storybook/**/*.ts"
+    ".storybook/**/*.ts",
+    "*.config.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

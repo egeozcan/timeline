@@ -12,7 +12,6 @@ export default tseslint.config(
       'storybook-static/**',
       'coverage/**',
       '*.config.js',
-      '*.config.ts',
     ],
   },
 
@@ -25,7 +24,13 @@ export default tseslint.config(
 
   // Main configuration for all TypeScript files
   {
-    files: ['src/**/*.ts', 'test/**/*.ts', 'stories/**/*.ts', '.storybook/**/*.ts'],
+    files: [
+      'src/**/*.ts',
+      'test/**/*.ts',
+      'stories/**/*.ts',
+      '.storybook/**/*.ts',
+      '*.config.ts',
+    ],
     plugins: {
       lit: litPlugin,
     },
@@ -138,7 +143,7 @@ export default tseslint.config(
 
   // Node-based scripts and configuration
   {
-    files: ['scripts/**/*.mjs', 'test/**/*.mjs', '*.mjs'],
+    files: ['scripts/**/*.mjs', 'test/**/*.mjs', '*.mjs', '*.config.ts'],
     languageOptions: {
       globals: {
         ...globals.node,

@@ -5,10 +5,10 @@ export default defineConfig({
     lib: {
       entry: 'src/index.ts',
       formats: ['es'],
-      fileName: 'index'
+      fileName: 'index',
     },
     rollupOptions: {
-      external: ['lit', 'lit/decorators.js', 'lit/directives/class-map.js']
-    }
-  }
+      external: ['lit', 'lit/decorators.js', 'lit/directives/class-map.js'],
+    },
+  },
 });
