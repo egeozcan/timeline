@@ -206,8 +206,9 @@ export const WithImage: StoryObj = {
 - `--timeline-axis-color`, `--timeline-axis-width` - Main axis color and stroke width
 - `--timeline-connector-color`, `--timeline-connector-width` - Connector color and stroke width
 - `--timeline-dot-color`, `--timeline-dot-size` - Event dot color and radius
-- `--timeline-marker-color`, `--timeline-marker-font-size` - Marker tick color and label size
+- `--timeline-marker-color`, `--timeline-marker-text-color`, `--timeline-marker-font-size` - Marker tick color, label color, and label size
 - `--timeline-h-row-gap`, `--timeline-v-column-gap` - Axis-mode packing gaps
+- `--timeline-scrollbar-thumb-color`, `--timeline-scrollbar-track-color` - Scrollbar colors
 - `--timeline-list-gap`, `--timeline-list-padding` - List spacing and padding
 
 ### `<timeline-event>`

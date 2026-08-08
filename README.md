@@ -1,6 +1,6 @@
 # lit-timeline
 
-A customizable timeline component built with [Lit](https://lit.dev/) for displaying chronological events in horizontal or vertical layouts.
+A customizable timeline component built with [Lit](https://lit.dev/) for displaying chronological events in horizontal, vertical, or list layouts.
 
 ## Features
 
@@ -16,15 +16,15 @@ A customizable timeline component built with [Lit](https://lit.dev/) for display
 
 ### Dark Theme
 
-![Dark Theme](test/visual/__snapshots__/visual.spec.ts/chromium/theme-dark.png)
+![Dark Theme](test/visual/__snapshots__/visual.spec.ts/linux/chromium/theme-dark.png)
 
 ### Light Theme
 
-![Light Theme](test/visual/__snapshots__/visual.spec.ts/chromium/theme-light.png)
+![Light Theme](test/visual/__snapshots__/visual.spec.ts/linux/chromium/theme-light.png)
 
 ### Modern Theme
 
-![Modern Theme](test/visual/__snapshots__/visual.spec.ts/chromium/theme-modern.png)
+![Modern Theme](test/visual/__snapshots__/visual.spec.ts/linux/chromium/theme-modern.png)
 
 ## Installation
 
@@ -158,7 +158,7 @@ A standalone `<timeline-event>` is visible, relatively positioned, and keyboard 
 
 ## Styling
 
-By default, these components have **minimal styling** - only structural/layout CSS is applied. All visual theming (colors, borders, shadows) must be applied via CSS parts or pre-built themes.
+The components include structural layout styles and usable default card colors, borders, radius, shadow, and typography. Customize those defaults with CSS custom properties and parts, or apply a pre-built theme for a coordinated appearance.
 
 ### Pre-built Themes
 
@@ -245,20 +245,23 @@ timeline-event p {
 
 `<timeline-component>` supports these properties:
 
-| Property                      | Default  | Purpose                     |
-| ----------------------------- | -------- | --------------------------- |
-| `--timeline-axis-color`       | unset    | Axis color                  |
-| `--timeline-axis-width`       | `2`      | Axis stroke width           |
-| `--timeline-connector-color`  | unset    | Connector color             |
-| `--timeline-connector-width`  | `2`      | Connector stroke width      |
-| `--timeline-dot-color`        | unset    | Event dot color             |
-| `--timeline-dot-size`         | `5`      | Event dot radius            |
-| `--timeline-marker-color`     | unset    | Marker tick color           |
-| `--timeline-marker-font-size` | `0.9rem` | Marker label font size      |
-| `--timeline-h-row-gap`        | `330px`  | Horizontal-mode row gap     |
-| `--timeline-v-column-gap`     | `100px`  | Vertical-mode column gap    |
-| `--timeline-list-gap`         | `16px`   | List-mode event gap         |
-| `--timeline-list-padding`     | `20px`   | List-mode container padding |
+| Property                           | Default       | Purpose                     |
+| ---------------------------------- | ------------- | --------------------------- |
+| `--timeline-axis-color`            | `#47476b`     | Axis color                  |
+| `--timeline-axis-width`            | `2`           | Axis stroke width           |
+| `--timeline-connector-color`       | `#47476b`     | Connector color             |
+| `--timeline-connector-width`       | `2`           | Connector stroke width      |
+| `--timeline-dot-color`             | `#ff6b6b`     | Event dot color             |
+| `--timeline-dot-size`              | `5`           | Event dot radius            |
+| `--timeline-marker-color`          | `#a4a4c1`     | Marker tick color           |
+| `--timeline-marker-text-color`     | `#a4a4c1`     | Marker label color          |
+| `--timeline-marker-font-size`      | `0.9rem`      | Marker label font size      |
+| `--timeline-h-row-gap`             | `330px`       | Horizontal-mode row stride  |
+| `--timeline-v-column-gap`          | `100px`       | Vertical-mode column gap    |
+| `--timeline-scrollbar-thumb-color` | `#47476b`     | Scrollbar thumb color       |
+| `--timeline-scrollbar-track-color` | `transparent` | Scrollbar track color       |
+| `--timeline-list-gap`              | `16px`        | List-mode event gap         |
+| `--timeline-list-padding`          | `20px`        | List-mode container padding |
 
 `<timeline-event>` supports these properties:
 
@@ -363,7 +366,7 @@ The timeline automatically determines its date range:
 - **Short timelines** (< 2 years): Shows monthly markers (e.g., "Mar 24", "Apr 24")
 - **Long timelines** (≥ 2 years): Shows 5-year markers (e.g., "1990", "1995", "2000")
 
-Override this with `start-year` and `end-year` attributes for explicit control. Vertical timelines narrower than 600px use a one-sided layout with the axis on the left and every card on the right, without horizontal scrolling. At 600px and wider, vertical layouts alternate cards on both sides.
+Override this with `start-year` and `end-year` attributes for explicit control. Each defined bound must be a finite integer from 1 through 9999, and the start must not exceed the end; invalid ranges warn and render no layout. Vertical timelines narrower than 600px use a one-sided layout with the axis on the left and every card on the right, without horizontal scrolling. At 600px and wider, vertical layouts alternate cards on both sides.
 
 ## Accessibility
 
@@ -371,9 +374,9 @@ The timeline component is designed with accessibility in mind, following WCAG 2.
 
 ### ARIA Support
 
-- Timeline region has `role="region"` with configurable `aria-label`
-- Event cards have `role="article"` with descriptive labels
-- Screen reader-only date announcements for each event
+- Axis timelines expose a `role="region"`; list mode exposes a labelled `role="list"`. Omitted or empty labels fall back to `Timeline`
+- Event cards have descriptive `role="article"` content, while list-mode hosts are list items
+- Each event has one date: visually hidden in axis modes and visibly rendered in list mode
 - SVG decorations are hidden from assistive technology (`aria-hidden="true"`)
 
 ### Keyboard Navigation
@@ -447,6 +450,9 @@ npm test           # Build current source, then run cross-browser unit tests
 npm run test:unit  # Run unit tests against output that is already built
 npm run test:watch # Build once, then run unit tests in watch mode
 npm run test:package
+
+# Reliable focused diagnosis without whole-suite coverage thresholds:
+npm run build && npx web-test-runner --files test/unit/date-utils.test.ts --coverage=false
 ```
 
 ## License

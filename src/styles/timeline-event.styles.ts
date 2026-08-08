@@ -41,6 +41,8 @@ export const timelineEventStyles = css`
   .card {
     overflow: hidden;
     box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
     background: var(--timeline-event-bg-color, #2c2c54);
     border: 1px solid var(--timeline-event-border-color, #47476b);
     border-radius: var(--timeline-event-border-radius, 16px);
@@ -80,6 +82,7 @@ export const timelineEventStyles = css`
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+    color: var(--timeline-event-date-color, currentColor);
     font-size: var(--timeline-event-date-font-size, 0.85rem);
     font-weight: var(--timeline-event-date-font-weight, 500);
   }

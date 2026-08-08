@@ -134,6 +134,12 @@ export class TimelineComponent extends LitElement {
     this._observedWrapper = undefined;
     this.removeEventListener('keydown', this._handleKeyDown);
     this.removeEventListener('focusin', this._handleFocusIn);
+    for (const event of this._managedEvents) {
+      this._restoreStandaloneEvent(event);
+    }
+    this._events = [];
+    this._managedEvents = [];
+    this._activeEventIndex = 0;
     if (this._layoutScheduled) {
       this._layoutScheduled = false;
     }
@@ -515,9 +521,42 @@ export class TimelineComponent extends LitElement {
     return new Date(`${date}T12:00:00Z`).getTime();
   }
 
+  private _utcDate(year: number, month: number, day: number): Date {
+    const date = new Date(0);
+    date.setUTCHours(12, 0, 0, 0);
+    date.setUTCFullYear(year, month, day);
+    return date;
+  }
+
+  private _warnRange(warning: string): void {
+    if (!this._warnedRanges.has(warning)) {
+      this._warnedRanges.add(warning);
+      console.warn(warning);
+    }
+  }
+
+  private _validRangeBound(name: 'start-year' | 'end-year', value?: number | null): boolean {
+    if (value === undefined || value === null) {
+      return true;
+    }
+    if (Number.isFinite(value) && Number.isInteger(value) && value >= 1 && value <= 9999) {
+      return true;
+    }
+    this._warnRange(
+      `[timeline-component] Invalid ${name} ${String(value)}; expected an integer from 1 to 9999.`
+    );
+    return false;
+  }
+
   private _getDateRangeAndEvents(): DateRangeData | null {
     const sortedEvents = this._measuredEvents();
     if (sortedEvents.length === 0) {
+      return null;
+    }
+
+    const validStartYear = this._validRangeBound('start-year', this.startYear);
+    const validEndYear = this._validRangeBound('end-year', this.endYear);
+    if (!validStartYear || !validEndYear) {
       return null;
     }
 
@@ -525,24 +564,26 @@ export class TimelineComponent extends LitElement {
     const minDate = new Date(Math.min(...timestamps));
     const maxDate = new Date(Math.max(...timestamps));
 
-    const startDate = new Date(
-      Date.UTC(minDate.getUTCFullYear(), minDate.getUTCMonth() - 2, 1, 12)
-    );
-    const endDate = new Date(Date.UTC(maxDate.getUTCFullYear(), maxDate.getUTCMonth() + 3, 0, 12));
-
-    if (this.startYear !== undefined) {
-      startDate.setTime(Date.UTC(this.startYear, 0, 1, 12));
+    let startDate = this._utcDate(minDate.getUTCFullYear(), minDate.getUTCMonth() - 2, 1);
+    let endDate = this._utcDate(maxDate.getUTCFullYear(), maxDate.getUTCMonth() + 3, 0);
+    if (startDate.getUTCFullYear() < 1) {
+      startDate = this._utcDate(1, 0, 1);
     }
-    if (this.endYear !== undefined) {
-      endDate.setTime(Date.UTC(this.endYear, 11, 31, 12));
+    if (endDate.getUTCFullYear() > 9999) {
+      endDate = this._utcDate(9999, 11, 31);
+    }
+
+    if (this.startYear !== undefined && this.startYear !== null) {
+      startDate = this._utcDate(this.startYear, 0, 1);
+    }
+    if (this.endYear !== undefined && this.endYear !== null) {
+      endDate = this._utcDate(this.endYear, 11, 31);
     }
 
     if (startDate.getTime() > endDate.getTime()) {
-      const warning = `[timeline-component] Invalid range ${this.startYear}–${this.endYear}; start-year must not exceed end-year.`;
-      if (!this._warnedRanges.has(warning)) {
-        this._warnedRanges.add(warning);
-        console.warn(warning);
-      }
+      this._warnRange(
+        `[timeline-component] Invalid range ${this.startYear}–${this.endYear}; start-year must not exceed end-year.`
+      );
       return null;
     }
 
@@ -568,18 +609,28 @@ export class TimelineComponent extends LitElement {
       ((this._timestamp(date) - data.startDate.getTime()) / duration) * (contentWidth - 2 * margin);
 
     const rowEnds: number[] = [];
+    const rowHeights: number[] = [];
     const rowGap =
       parseFloat(getComputedStyle(this).getPropertyValue('--timeline-h-row-gap')) || 330;
-    const layouts: EventLayout[] = [];
-    for (const event of data.sortedEvents) {
+    const assigned = data.sortedEvents.map((event) => {
       const x = Math.max(0, dateToX(event.date) - event.width / 2);
       let row = rowEnds.findIndex((end) => x > end);
       if (row === -1) {
         row = rowEnds.length;
       }
-      layouts.push({ ...event, x, y: 20 + row * rowGap });
       rowEnds[row] = x + event.width + 30;
+      rowHeights[row] = Math.max(rowHeights[row] ?? 0, event.height);
+      return { event, x, row };
+    });
+    const rowTops: number[] = [20];
+    for (let row = 1; row < rowHeights.length; row++) {
+      rowTops[row] = rowTops[row - 1] + Math.max(rowGap, rowHeights[row - 1] + 30);
     }
+    const layouts: EventLayout[] = assigned.map(({ event, x, row }) => ({
+      ...event,
+      x,
+      y: rowTops[row],
+    }));
 
     const eventBottom = Math.max(...layouts.map((layout) => layout.y + layout.height));
     const axisY = eventBottom + 60;
@@ -639,18 +690,31 @@ export class TimelineComponent extends LitElement {
       margin +
       ((this._timestamp(date) - data.startDate.getTime()) / duration) *
         (axisContentHeight - 2 * margin);
-    const axisX = mobile ? mobileAxisX : containerWidth / 2;
     const gap =
       parseFloat(getComputedStyle(this).getPropertyValue('--timeline-v-column-gap')) || 100;
+    const leftCardWidth = mobile
+      ? 0
+      : Math.max(
+          0,
+          ...data.sortedEvents.filter((_, index) => index % 2 === 0).map((event) => event.width)
+        );
+    const rightCardWidth = mobile
+      ? 0
+      : Math.max(
+          0,
+          ...data.sortedEvents.filter((_, index) => index % 2 === 1).map((event) => event.width)
+        );
+    const contentWidth = mobile
+      ? containerWidth
+      : Math.max(containerWidth, leftCardWidth + rightCardWidth + gap * 2);
+    const axisX = mobile
+      ? mobileAxisX
+      : leftCardWidth + gap + (contentWidth - leftCardWidth - rightCardWidth - gap * 2) / 2;
     const sideBottom: Record<'left' | 'right', number> = { left: -30, right: -30 };
 
     const layouts: EventLayout[] = data.sortedEvents.map((event, index) => {
       const side: 'left' | 'right' = mobile || index % 2 === 1 ? 'right' : 'left';
-      const x = mobile
-        ? mobileCardX
-        : side === 'left'
-          ? Math.max(0, axisX - gap - event.width)
-          : axisX + gap;
+      const x = mobile ? mobileCardX : side === 'left' ? axisX - gap - event.width : axisX + gap;
       const idealY = Math.max(0, dateToY(event.date) - event.height / 2);
       const y = Math.max(idealY, sideBottom[side] + 30);
       sideBottom[side] = y + event.height;
@@ -658,7 +722,7 @@ export class TimelineComponent extends LitElement {
     });
 
     const requiredWidth = Math.max(
-      containerWidth,
+      contentWidth,
       ...layouts.map((layout) => layout.x + layout.width)
     );
     if (requiredWidth > containerWidth) {
@@ -702,9 +766,7 @@ export class TimelineComponent extends LitElement {
     const twoYearsInMs = 2 * 365.25 * 24 * 60 * 60 * 1000;
 
     if (totalDurationMs <= twoYearsInMs) {
-      const currentMonth = new Date(
-        Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1, 12)
-      );
+      const currentMonth = this._utcDate(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1);
       while (currentMonth <= endDate) {
         entries.push({
           date: currentMonth.toISOString().slice(0, 10),
@@ -719,7 +781,8 @@ export class TimelineComponent extends LitElement {
     } else {
       for (let year = startDate.getUTCFullYear(); year <= endDate.getUTCFullYear(); year++) {
         if (year % 5 === 0) {
-          entries.push({ date: `${year}-01-01`, content: year });
+          const paddedYear = String(year).padStart(4, '0');
+          entries.push({ date: `${paddedYear}-01-01`, content: paddedYear });
         }
       }
     }
@@ -795,7 +858,7 @@ export class TimelineComponent extends LitElement {
                 ${this._svgData.axisPath
                   ? svg`<path
                       d=${this._svgData.axisPath}
-                      stroke="var(--timeline-axis-color)"
+                      stroke="var(--timeline-axis-color, #47476b)"
                       stroke-width="var(--timeline-axis-width, 2)"
                       part="axis-line"
                     ></path>`
@@ -803,7 +866,7 @@ export class TimelineComponent extends LitElement {
                 ${this._svgData.connectors.map(
                   (pathData) => svg`<path
                     d=${pathData}
-                    stroke="var(--timeline-connector-color)"
+                    stroke="var(--timeline-connector-color, #47476b)"
                     stroke-width="var(--timeline-connector-width, 2)"
                     fill="none"
                     part="connector-line"
@@ -816,7 +879,7 @@ export class TimelineComponent extends LitElement {
                       y1=${marker.line.y1}
                       x2=${marker.line.x2}
                       y2=${marker.line.y2}
-                      stroke="var(--timeline-marker-color)"
+                      stroke="var(--timeline-marker-color, #a4a4c1)"
                       stroke-width="2"
                       part="marker-tick"
                     ></line>
@@ -834,7 +897,7 @@ export class TimelineComponent extends LitElement {
                     cx=${dot.cx}
                     cy=${dot.cy}
                     r=${dotRadius}
-                    fill="var(--timeline-dot-color)"
+                    fill="var(--timeline-dot-color, #ff6b6b)"
                     part="dot"
                   ></circle>`
                 )}

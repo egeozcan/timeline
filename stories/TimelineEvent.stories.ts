@@ -8,7 +8,7 @@ const meta: Meta = {
   argTypes: {
     date: {
       control: 'text',
-      description: 'Event date in YYYY-MM-DD format',
+      description: 'Strict canonical calendar date in YYYY-MM-DD format',
     },
     imageSrc: {
       control: 'text',
@@ -23,7 +23,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'A timeline event card component that displays a single event with an optional image. By default, components have minimal styling - use CSS parts to apply themes.',
+          'A timeline event card with an optional image and usable built-in visual defaults. Customize it with CSS custom properties, CSS parts, or a pre-built theme.',
       },
     },
   },

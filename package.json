@@ -46,7 +46,7 @@
     "test": "npm run test:unit",
     "test:unit": "web-test-runner",
     "test:watch": "npm run build && web-test-runner --watch",
-    "test:package": "npm run build && npm run analyze && node test/package/package-smoke.mjs",
+    "test:package": "npm run build && npm run analyze && node test/package/package-smoke.mjs && node test/package/date-timezone-smoke.mjs",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.{ts,mjs}\" \"stories/**/*.ts\" \".storybook/**/*.ts\" \"scripts/**/*.mjs\" \"*.mjs\" \"*.config.ts\"",

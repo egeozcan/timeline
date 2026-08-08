@@ -8,11 +8,11 @@ A customizable timeline component built with Lit for displaying chronological ev
 
 ## Features
 
-- **Horizontal and vertical layouts** - Display timelines in either orientation
-- **CSS custom properties for theming** - Fully customizable appearance
-- **Auto date range detection** - Automatically determines timeline bounds from events
-- **Responsive design** - Works across different screen sizes
-- **Full accessibility support** - ARIA labels, keyboard navigation, and screen reader support
+- **Horizontal, vertical, and list layouts**
+- **CSS custom properties and parts for theming**
+- **Automatic date ranges and chronological direct-child ordering**
+- **One-sided mobile vertical layout below 600px**
+- **ARIA labels, roving keyboard navigation, and list semantics**
 
 ## Installation
 
@@ -32,7 +32,7 @@ npm install lit-timeline
     <h3>Project Kick-off</h3>
     <p>The initial planning phase begins.</p>
   </timeline-event>
-  <timeline-event date="2024-05-22" image-src="design.jpg">
+  <timeline-event date="2024-05-22" image-src="design.jpg" image-alt="Approved design mockups">
     <h3>Design Complete</h3>
     <p>Final designs approved by stakeholders.</p>
   </timeline-event>
@@ -43,52 +43,63 @@ npm install lit-timeline
 
 ### `<timeline-component>`
 
-The main container that positions events on a timeline axis.
+The main container positions direct event children on an axis or renders them as a list. Valid children are reordered chronologically. Invalid ranges warn and render no layout.
 
 **Attributes:**
 
-- `vertical` - Display timeline vertically (default: horizontal)
-- `start-year` - Override start year for timeline range
-- `end-year` - Override end year for timeline range
-- `label` - Accessible label for the timeline region
+- `vertical` - Display vertically instead of horizontally
+- `list` - Display a labelled list without an axis
+- `start-year` - Override the start with an integer from 1 through 9999
+- `end-year` - Override the end with an integer from 1 through 9999
+- `label` - Accessible label; omitted or empty values fall back to `Timeline`
 
 ### `<timeline-event>`
 
-Individual event cards displayed on the timeline.
+Individual event cards are visible and focusable standalone; a parent timeline manages their layout and roving tabindex.
 
 **Attributes:**
 
-- `date` - Event date in YYYY-MM-DD format (required)
-- `image-src` - URL for the event image (optional)
+- `date` - Required strict canonical `YYYY-MM-DD` calendar date. Invalid, missing, or impossible dates are hidden and warn
+- `image-src` - URL for the optional event image
+- `image-alt` - Alternative text for a meaningful image; the default empty value makes it decorative
+
+Dates are formatted in UTC. Axis-mode dates are visually hidden but available to assistive technology; list-mode dates are visible.
+
+The component includes usable default card colors, border, radius, shadow, and typography. Themes and consumer styles can override them through the documented properties and parts.
 
 ## CSS Custom Properties
 
 ### Timeline Container
 
-| Property                       | Default   | Description                                    |
-| ------------------------------ | --------- | ---------------------------------------------- |
-| `--timeline-axis-color`        | `#47476b` | Color of the main timeline axis                |
-| `--timeline-axis-width`        | `2`       | Width of the timeline axis line                |
-| `--timeline-connector-color`   | `#47476b` | Color of event connector lines                 |
-| `--timeline-connector-width`   | `2`       | Width of connector lines                       |
-| `--timeline-dot-color`         | `#ff6b6b` | Color of event dots on axis                    |
-| `--timeline-dot-size`          | `5`       | Radius of event dots                           |
-| `--timeline-marker-color`      | `#a4a4c1` | Color of date marker ticks                     |
-| `--timeline-marker-text-color` | `#a4a4c1` | Color of date marker text                      |
-| `--timeline-marker-font-size`  | `0.9rem`  | Font size of date markers                      |
-| `--timeline-h-row-gap`         | `330px`   | Vertical gap between rows (horizontal mode)    |
-| `--timeline-v-column-gap`      | `100px`   | Horizontal gap between columns (vertical mode) |
+| Property                           | Default       | Description                                    |
+| ---------------------------------- | ------------- | ---------------------------------------------- |
+| `--timeline-axis-color`            | `#47476b`     | Main timeline axis color                       |
+| `--timeline-axis-width`            | `2`           | Timeline axis stroke width                     |
+| `--timeline-connector-color`       | `#47476b`     | Event connector color                          |
+| `--timeline-connector-width`       | `2`           | Connector stroke width                         |
+| `--timeline-dot-color`             | `#ff6b6b`     | Event dot color                                |
+| `--timeline-dot-size`              | `5`           | Event dot radius                               |
+| `--timeline-marker-color`          | `#a4a4c1`     | Date marker tick color                         |
+| `--timeline-marker-text-color`     | `#a4a4c1`     | Date marker label color                        |
+| `--timeline-marker-font-size`      | `0.9rem`      | Date marker label size                         |
+| `--timeline-h-row-gap`             | `330px`       | Horizontal row stride (expands for tall cards) |
+| `--timeline-v-column-gap`          | `100px`       | Vertical side gap                              |
+| `--timeline-scrollbar-thumb-color` | `#47476b`     | Scrollbar thumb color                          |
+| `--timeline-scrollbar-track-color` | `transparent` | Scrollbar track color                          |
+| `--timeline-list-gap`              | `16px`        | List event gap                                 |
+| `--timeline-list-padding`          | `20px`        | List container padding                         |
 
 ### Timeline Event
 
-| Property                           | Default                       | Description                 |
-| ---------------------------------- | ----------------------------- | --------------------------- |
-| `--timeline-event-width`           | `250px`                       | Width of event cards        |
-| `--timeline-event-bg-color`        | `#2c2c54`                     | Event card background       |
-| `--timeline-event-border-color`    | `#47476b`                     | Event card border color     |
-| `--timeline-event-border-radius`   | `16px`                        | Event card border radius    |
-| `--timeline-event-shadow`          | `0 10px 30px rgba(0,0,0,0.3)` | Event card box shadow       |
-| `--timeline-event-image-height`    | `140px`                       | Height of event images      |
-| `--timeline-event-content-padding` | `20px`                        | Padding inside content area |
-| `--timeline-event-heading-color`   | `#ffffff`                     | Event title color           |
-| `--timeline-event-text-color`      | `#a4a4c1`                     | Event description color     |
+| Property                           | Default                       | Description              |
+| ---------------------------------- | ----------------------------- | ------------------------ |
+| `--timeline-event-width`           | `250px`                       | Event host/card width    |
+| `--timeline-event-bg-color`        | `#2c2c54`                     | Card background          |
+| `--timeline-event-border-color`    | `#47476b`                     | Card border color        |
+| `--timeline-event-border-radius`   | `16px`                        | Card radius              |
+| `--timeline-event-shadow`          | `0 10px 30px rgba(0,0,0,0.3)` | Card shadow              |
+| `--timeline-event-image-height`    | `140px`                       | Image/placeholder height |
+| `--timeline-event-content-padding` | `20px`                        | Content padding          |
+| `--timeline-event-date-color`      | `currentColor`                | Visible list date color  |
+| `--timeline-event-heading-color`   | `#ffffff`                     | Heading color            |
+| `--timeline-event-text-color`      | `#a4a4c1`                     | Description color        |

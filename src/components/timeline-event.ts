@@ -30,6 +30,7 @@ import { formatDate, isValidDate } from '../utils/date-utils.js';
  * @cssprop [--timeline-event-placeholder-bg=#3a3a66] - Background of image placeholder
  * @cssprop [--timeline-event-placeholder-color=#8c8caf] - Text color of placeholder
  * @cssprop [--timeline-event-focus-offset=4px] - Focus outline offset
+ * @cssprop [--timeline-event-date-color=currentColor] - Color of the date display
  * @cssprop [--timeline-event-date-font-size=0.85rem] - Font size of the date display
  * @cssprop [--timeline-event-date-font-weight=500] - Font weight of the date display
  * @cssprop [--timeline-list-event-max-width=600px] - Maximum width of event cards in list mode

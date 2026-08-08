@@ -1042,4 +1042,266 @@ describe('TimelineComponent', () => {
     );
     expect(hasMonthMarker).to.be.true;
   });
+
+  it('lays out canonical years 0001 and 0099 with finite geometry and padded markers', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component start-year="1" end-year="99">
+        <timeline-event date="0001-06-15"><h3>Year one</h3></timeline-event>
+        <timeline-event date="0099-06-15"><h3>Year ninety-nine</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+
+    const axis = el.shadowRoot!.querySelector<SVGPathElement>('[part="axis-line"]')!;
+    expect(axis.getAttribute('d')).not.to.match(/NaN|Infinity/);
+    for (const dot of Array.from(el.shadowRoot!.querySelectorAll('[part="dot"]'))) {
+      expect(Number.isFinite(Number(dot.getAttribute('cx')))).to.be.true;
+    }
+    for (const event of Array.from(el.children) as HTMLElement[]) {
+      expect(event.hasAttribute('data-layout-ready')).to.be.true;
+      expect(Number.isFinite(parseFloat(event.style.left))).to.be.true;
+    }
+    const labels = Array.from(el.shadowRoot!.querySelectorAll('.marker-text')).map((marker) =>
+      marker.textContent?.trim()
+    );
+    expect(labels).to.include('0005');
+    expect(labels).to.include('0095');
+  });
+
+  for (const { attribute, value, warning } of [
+    {
+      attribute: 'start-year',
+      value: 'not-a-number',
+      warning: '[timeline-component] Invalid start-year NaN; expected an integer from 1 to 9999.',
+    },
+    {
+      attribute: 'start-year',
+      value: '1.5',
+      warning: '[timeline-component] Invalid start-year 1.5; expected an integer from 1 to 9999.',
+    },
+    {
+      attribute: 'start-year',
+      value: '0',
+      warning: '[timeline-component] Invalid start-year 0; expected an integer from 1 to 9999.',
+    },
+    {
+      attribute: 'end-year',
+      value: '10000',
+      warning: '[timeline-component] Invalid end-year 10000; expected an integer from 1 to 9999.',
+    },
+  ]) {
+    it(`clears layout for invalid ${attribute}=${value}`, async () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      try {
+        console.warn = (message?: unknown) => warnings.push(String(message));
+        const el = await fixture<TimelineComponent>(html`
+          <timeline-component>
+            <timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>
+          </timeline-component>
+        `);
+        el.setAttribute(attribute, value);
+        await settleLayout(el);
+        await settleLayout(el);
+
+        expect(warnings).to.deep.equal([warning]);
+        expect(el.shadowRoot!.querySelectorAll('[part="axis-line"], [part="dot"]')).to.have.length(
+          0
+        );
+        expect(el.firstElementChild!.hasAttribute('data-layout-ready')).to.be.false;
+        expect(el.shadowRoot!.innerHTML).not.to.match(/NaN|Infinity/);
+      } finally {
+        // eslint-disable-next-line require-atomic-updates
+        console.warn = originalWarn;
+      }
+    });
+  }
+
+  it('clears layout for a non-finite property range bound', async () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    try {
+      console.warn = (message?: unknown) => warnings.push(String(message));
+      const el = await fixture<TimelineComponent>(html`
+        <timeline-component>
+          <timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>
+        </timeline-component>
+      `);
+      el.endYear = Number.POSITIVE_INFINITY;
+      await settleLayout(el);
+
+      expect(warnings).to.deep.equal([
+        '[timeline-component] Invalid end-year Infinity; expected an integer from 1 to 9999.',
+      ]);
+      expect(el.shadowRoot!.querySelectorAll('[part="axis-line"], [part="dot"]')).to.have.length(0);
+      expect(el.firstElementChild!.hasAttribute('data-layout-ready')).to.be.false;
+    } finally {
+      // eslint-disable-next-line require-atomic-updates
+      console.warn = originalWarn;
+    }
+  });
+
+  it('restores managed child state when the parent disconnects before extraction', async () => {
+    const parent = document.createElement('div');
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    const event = document.createElement('timeline-event');
+    event.setAttribute('date', '2024-06-15');
+    event.setAttribute('role', 'note');
+    event.setAttribute('tabindex', '4');
+    event.style.position = 'sticky';
+    event.style.left = '9px';
+    el.append(event);
+    parent.append(el);
+    document.body.append(parent);
+    await settleLayout(el);
+
+    parent.remove();
+    event.remove();
+    document.body.append(event);
+    await (event as HTMLElement & { updateComplete: Promise<boolean> }).updateComplete;
+
+    expect(event.hasAttribute('data-timeline-managed')).to.be.false;
+    expect(event.hasAttribute('data-layout-ready')).to.be.false;
+    expect(event.hasAttribute('data-layout-mode')).to.be.false;
+    expect(event.getAttribute('role')).to.equal('note');
+    expect(event.getAttribute('tabindex')).to.equal('4');
+    expect(event.style.position).to.equal('sticky');
+    expect(event.style.left).to.equal('9px');
+
+    event.remove();
+    document.body.append(el);
+    await settleLayout(el);
+    expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(0);
+    el.remove();
+  });
+
+  it('uses cumulative horizontal row heights for tall customized cards', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-06-15" style="--timeline-event-image-height: 500px">
+          <h3>First</h3>
+        </timeline-event>
+        <timeline-event date="2024-06-15" style="--timeline-event-image-height: 500px">
+          <h3>Second</h3>
+        </timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+
+    const [first, second] = Array.from(el.children).map((event) => event.getBoundingClientRect());
+    expect(first.bottom + 29).to.be.at.most(second.top);
+  });
+
+  it('precomputes enough two-sided width for 520px cards at the desktop breakpoint', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '600px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = `
+      <timeline-event date="2024-06-15" style="--timeline-event-width: 520px"><h3>First</h3></timeline-event>
+      <timeline-event date="2024-06-15" style="--timeline-event-width: 520px"><h3>Second</h3></timeline-event>`;
+    parent.append(el);
+    await settleLayout(el);
+
+    const [first, second] = Array.from(el.children).map((event) => event.getBoundingClientRect());
+    expect(first.right).to.be.at.most(second.left);
+    const axisPath = el.shadowRoot!.querySelector('[part="axis-line"]')!.getAttribute('d')!;
+    const axisX = Number(axisPath.match(/^M ([\d.]+),/)?.[1]);
+    const container = el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!;
+    expect(first.right - container.getBoundingClientRect().left).to.be.at.most(axisX);
+    expect(second.left - container.getBoundingClientRect().left).to.be.at.least(axisX);
+    parent.remove();
+  });
+
+  for (const width of [320, 375]) {
+    it(`constrains an externally widened card part at ${width}px`, async () => {
+      const style = document.createElement('style');
+      style.textContent =
+        'timeline-component.part-width-test timeline-event::part(card) { width: 600px; }';
+      document.head.append(style);
+      const parent = document.createElement('div');
+      parent.style.width = `${width}px`;
+      document.body.append(parent);
+      const el = document.createElement('timeline-component') as TimelineComponent;
+      el.className = 'part-width-test';
+      el.vertical = true;
+      el.innerHTML = '<timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>';
+      parent.append(el);
+      await settleLayout(el);
+
+      const event = el.firstElementChild as HTMLElement & { shadowRoot: ShadowRoot };
+      const card = event.shadowRoot.querySelector<HTMLElement>('[part="card"]')!;
+      const hostRect = event.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.scroll-wrapper')!;
+      expect(cardRect.left).to.be.at.least(hostRect.left);
+      expect(cardRect.right).to.be.at.most(hostRect.right);
+      expect(wrapper.scrollWidth).to.be.at.most(wrapper.clientWidth);
+      parent.remove();
+      style.remove();
+    });
+  }
+
+  it('wires timeline color variables and keeps documented SVG fallbacks', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component
+        style="--timeline-marker-text-color: rgb(1, 2, 3); --timeline-scrollbar-thumb-color: rgb(4, 5, 6); --timeline-scrollbar-track-color: rgb(7, 8, 9)"
+      >
+        <timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+
+    const marker = el.shadowRoot!.querySelector<SVGTextElement>('[part="marker-text"]')!;
+    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.scroll-wrapper')!;
+    expect(getComputedStyle(marker).fill).to.equal('rgb(1, 2, 3)');
+    const scrollbarColor = getComputedStyle(wrapper).scrollbarColor;
+    if (scrollbarColor !== undefined) {
+      expect(scrollbarColor).to.equal('rgb(4, 5, 6) rgb(7, 8, 9)');
+    }
+    expect(el.shadowRoot!.querySelector('[part="axis-line"]')!.getAttribute('stroke')).to.equal(
+      'var(--timeline-axis-color, #47476b)'
+    );
+    expect(
+      el.shadowRoot!.querySelector('[part="connector-line"]')!.getAttribute('stroke')
+    ).to.equal('var(--timeline-connector-color, #47476b)');
+    expect(el.shadowRoot!.querySelector('[part="marker-tick"]')!.getAttribute('stroke')).to.equal(
+      'var(--timeline-marker-color, #a4a4c1)'
+    );
+    expect(el.shadowRoot!.querySelector('[part="dot"]')!.getAttribute('fill')).to.equal(
+      'var(--timeline-dot-color, #ff6b6b)'
+    );
+  });
+
+  it('keeps an all-invalid timeline free of SVG and owned dimensions', async () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    try {
+      console.warn = (message?: unknown) => warnings.push(String(message));
+      const el = await fixture<TimelineComponent>(html`
+        <timeline-component>
+          <timeline-event date="invalid"><h3>First invalid</h3></timeline-event>
+          <timeline-event date="2024-02-30"><h3>Second invalid</h3></timeline-event>
+        </timeline-component>
+      `);
+      await settleLayout(el);
+      const container = el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!;
+
+      expect(el.shadowRoot!.querySelectorAll('[part="axis-line"], [part="dot"]')).to.have.length(0);
+      expect(container.style.minWidth).to.equal('');
+      expect(container.style.minHeight).to.equal('');
+      expect(container.style.width).to.equal('');
+      expect(container.style.height).to.equal('');
+      expect(container.scrollWidth).to.be.lessThan(1800);
+      expect(container.scrollHeight).to.be.lessThan(1800);
+      for (const event of Array.from(el.children)) {
+        expect(event.hasAttribute('data-layout-ready')).to.be.false;
+      }
+      expect(warnings).to.have.length(2);
+    } finally {
+      // eslint-disable-next-line require-atomic-updates
+      console.warn = originalWarn;
+    }
+  });
 });

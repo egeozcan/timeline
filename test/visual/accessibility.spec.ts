@@ -158,7 +158,8 @@ test.describe('@accessibility Accessibility Tests', () => {
       await page.waitForFunction(() => {
         const element = document.querySelector('timeline-component');
         const axis = element?.shadowRoot?.querySelector('[part="axis-line"]')?.getAttribute('d');
-        return axis?.startsWith('M 300,');
+        const axisX = Number(/^M ([\d.]+),/.exec(axis ?? '')?.[1]);
+        return element?.style.width === '600px' && axisX > 300;
       });
 
       const sides = await timeline.evaluate((element) => {

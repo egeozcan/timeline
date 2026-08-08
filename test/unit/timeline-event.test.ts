@@ -118,6 +118,7 @@ describe('TimelineEvent', () => {
       --timeline-event-heading-font-weight: 600;
       --timeline-event-text-color: rgb(19, 20, 21);
       --timeline-event-text-font-size: 17px;
+      --timeline-event-date-color: rgb(22, 23, 24);
       --timeline-event-date-font-size: 13px;
       --timeline-event-date-font-weight: 400;
       --timeline-list-event-max-width: 555px;
@@ -136,6 +137,7 @@ describe('TimelineEvent', () => {
     expect(headingStyle.fontWeight).to.equal('600');
     expect(textStyle.color).to.equal('rgb(19, 20, 21)');
     expect(textStyle.fontSize).to.equal('17px');
+    expect(dateStyle.color).to.equal('rgb(22, 23, 24)');
     expect(dateStyle.fontSize).to.equal('13px');
     expect(dateStyle.fontWeight).to.equal('400');
     expect(getComputedStyle(el).maxWidth).to.equal('555px');
