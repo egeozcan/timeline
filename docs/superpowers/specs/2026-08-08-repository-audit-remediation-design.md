@@ -24,6 +24,7 @@ Responsibilities:
 - Coalesce invalidation so one logical mutation causes one layout pass.
 - Preserve the currently focused event when refreshing roving tabindex.
 - Use keyboard event composition rather than `document.activeElement`, allowing navigation inside nested shadow roots.
+- Default an omitted/empty accessible label to `Timeline`, so the focusable region always has a non-empty name.
 - Clear mode-owned dimensions before measuring another mode.
 - Remove the frozen vertical width.
 - Clear SVG, layouts, and dimensions for empty timelines.
@@ -126,7 +127,7 @@ Required behavioral coverage includes:
 
 ## Parallel Integration Strategy
 
-All lanes branch from the same committed design/setup baseline. Lane B establishes the shared date-validation contract. Lane A implements against that declared interface in parallel. Lanes C and D remain source-disjoint from A/B except for documentation and snapshots.
+Lanes B, C, and D branch from the committed design/setup baseline and start concurrently. Lane B lands the shared date-validation contract first. Lane A then branches from Lane B’s reviewed commit while Lane C and Lane D continue in parallel. This preserves compile-time verification without duplicating the shared validator. Lanes C and D remain source-disjoint from A/B except for documentation and snapshots.
 
 Integration order:
 
