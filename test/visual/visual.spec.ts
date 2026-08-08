@@ -160,7 +160,7 @@ test.describe('@visual Visual Regression Tests', () => {
   });
 
   test.describe('Responsive', () => {
-    test('mobile viewport - vertical', async ({ page }) => {
+    test('375px one-sided mobile vertical', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/iframe.html?id=components-timelinecomponent--vertical&viewMode=story');
       await waitForTimelineReady(page);

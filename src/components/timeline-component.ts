@@ -774,8 +774,8 @@ export class TimelineComponent extends LitElement {
       <div
         class="scroll-wrapper${this.list ? ' list-mode' : ''}"
         part="scroll-wrapper"
-        role="region"
-        aria-label=${this.label.trim() || 'Timeline'}
+        role=${this.list ? 'list' : 'region'}
+        aria-label=${this.label?.trim() || 'Timeline'}
         tabindex="0"
       >
         <div
@@ -786,7 +786,7 @@ export class TimelineComponent extends LitElement {
         >
           <slot
             id="timeline-events"
-            role=${this.list ? 'list' : 'presentation'}
+            role="presentation"
             @slotchange=${this._handleSlotChange}
           ></slot>
           ${this.list

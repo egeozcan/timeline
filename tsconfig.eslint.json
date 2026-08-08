@@ -3,6 +3,11 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "stories/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "stories/**/*.ts",
+    ".storybook/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

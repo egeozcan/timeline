@@ -14,6 +14,10 @@ const meta: Meta = {
       control: 'text',
       description: 'URL for the event image',
     },
+    imageAlt: {
+      control: 'text',
+      description: 'Alternative text for a meaningful event image',
+    },
   },
   parameters: {
     docs: {
@@ -34,7 +38,7 @@ export const WithImage: Story = {
     <timeline-event
       date="2024-03-15"
       image-src="/assets/timeline-design.svg"
-      style="position: relative; visibility: visible;"
+      image-alt="Approved design mockups"
     >
       <h3>Design Mockups Approved</h3>
       <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
@@ -45,7 +49,7 @@ export const WithImage: Story = {
 export const WithoutImage: Story = {
   name: 'Without Image (Placeholder)',
   render: () => html`
-    <timeline-event date="2024-03-15" style="position: relative; visibility: visible;">
+    <timeline-event date="2024-03-15">
       <h3>Project Kick-off</h3>
       <p>The initial planning and brainstorming phase for the new company website begins.</p>
     </timeline-event>
@@ -55,11 +59,7 @@ export const WithoutImage: Story = {
 export const LongContent: Story = {
   name: 'Long Content (Truncated)',
   render: () => html`
-    <timeline-event
-      date="2024-03-15"
-      image-src="/assets/timeline-launch.svg"
-      style="position: relative; visibility: visible;"
-    >
+    <timeline-event date="2024-03-15" image-src="/assets/timeline-launch.svg">
       <h3>This is a very long title that should be truncated after two lines of text</h3>
       <p>
         This is a very long description that should be truncated after three lines. It contains a
@@ -76,7 +76,7 @@ export const CustomWidth: Story = {
     <timeline-event
       date="2024-03-15"
       image-src="/assets/timeline-design.svg"
-      style="position: relative; visibility: visible; --timeline-event-width: 350px;"
+      style="--timeline-event-width: 350px;"
     >
       <h3>Wider Event Card</h3>
       <p>This card uses a custom width of 350px instead of the default 250px.</p>

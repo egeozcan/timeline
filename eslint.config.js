@@ -12,7 +12,6 @@ export default tseslint.config(
       'storybook-static/**',
       'coverage/**',
       '*.config.js',
-      '*.config.mjs',
       '*.config.ts',
     ],
   },
@@ -26,7 +25,7 @@ export default tseslint.config(
 
   // Main configuration for all TypeScript files
   {
-    files: ['src/**/*.ts', 'test/**/*.ts', 'stories/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', 'stories/**/*.ts', '.storybook/**/*.ts'],
     plugins: {
       lit: litPlugin,
     },
@@ -137,9 +136,20 @@ export default tseslint.config(
     },
   },
 
+  // Node-based scripts and configuration
+  {
+    files: ['scripts/**/*.mjs', 'test/**/*.mjs', '*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.es2021,
+      },
+    },
+  },
+
   // Test files - relax some rules
   {
-    files: ['test/**/*.ts'],
+    files: ['test/**/*.{ts,mjs}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       // Chai expect() uses expression statements

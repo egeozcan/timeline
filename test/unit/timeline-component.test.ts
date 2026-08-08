@@ -731,16 +731,18 @@ describe('TimelineComponent', () => {
 
   for (const label of [undefined, '']) {
     it(`falls back to Timeline for ${label === undefined ? 'omitted' : 'empty'} labels`, async () => {
-      const el = await fixture<TimelineComponent>(html`
-        <timeline-component label=${label ?? ''}></timeline-component>
-      `);
+      const el = await fixture<TimelineComponent>(
+        label === undefined
+          ? html`<timeline-component></timeline-component>`
+          : html`<timeline-component label=""></timeline-component>`
+      );
       expect(el.shadowRoot!.querySelector('.scroll-wrapper')!.getAttribute('aria-label')).to.equal(
         'Timeline'
       );
     });
   }
 
-  it('applies list semantics to the slot and direct event hosts', async () => {
+  it('applies composed list semantics to the wrapper and direct event hosts', async () => {
     const el = await fixture<TimelineComponent>(html`
       <timeline-component list>
         <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
@@ -748,7 +750,11 @@ describe('TimelineComponent', () => {
       </timeline-component>
     `);
     await settleLayout(el);
-    expect(el.shadowRoot!.querySelector('slot')!.getAttribute('role')).to.equal('list');
+    const wrapper = el.shadowRoot!.querySelector('.scroll-wrapper')!;
+    expect(wrapper.getAttribute('role')).to.equal('list');
+    expect(wrapper.getAttribute('aria-label')).to.equal('Timeline');
+    expect(wrapper.getAttribute('tabindex')).to.equal('0');
+    expect(el.shadowRoot!.querySelector('slot')!.getAttribute('role')).to.equal('presentation');
     for (const event of Array.from(el.children)) {
       expect(event.getAttribute('role')).to.equal('listitem');
       expect(event.getAttribute('data-layout-mode')).to.equal('list');

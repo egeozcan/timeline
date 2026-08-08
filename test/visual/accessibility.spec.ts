@@ -103,6 +103,149 @@ test.describe('@accessibility Accessibility Tests', () => {
     });
   });
 
+  test.describe('Integrated behavior', () => {
+    test('375px vertical timeline is one-sided without horizontal overflow', async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 667 });
+      await page.goto('/iframe.html?id=components-timelinecomponent--vertical&viewMode=story');
+      await waitForTimelineReady(page);
+
+      const geometry = await page.locator('timeline-component').evaluate((timeline) => {
+        const wrapper = timeline.shadowRoot!.querySelector<HTMLElement>('.scroll-wrapper')!;
+        const axisPath = timeline
+          .shadowRoot!.querySelector('[part="axis-line"]')!
+          .getAttribute('d')!;
+        const axisX = Number(/^M ([\d.]+),/.exec(axisPath)?.[1]);
+        const eventRects = Array.from(timeline.querySelectorAll('timeline-event')).map((event) => {
+          const rect = event.getBoundingClientRect();
+          return {
+            left: rect.left,
+            right: rect.right,
+            layoutLeft: Number.parseFloat((event as HTMLElement).style.left),
+          };
+        });
+        return {
+          axisX,
+          eventRects,
+          wrapperClientWidth: wrapper.clientWidth,
+          wrapperScrollWidth: wrapper.scrollWidth,
+          documentClientWidth: document.documentElement.clientWidth,
+          documentScrollWidth: document.documentElement.scrollWidth,
+        };
+      });
+
+      expect(geometry.eventRects.length).toBeGreaterThan(1);
+      for (const rect of geometry.eventRects) {
+        expect(rect.layoutLeft).toBeGreaterThanOrEqual(geometry.axisX + 30);
+        expect(rect.left).toBeGreaterThanOrEqual(0);
+        expect(rect.right).toBeLessThanOrEqual(375);
+      }
+      expect(geometry.wrapperScrollWidth).toBeLessThanOrEqual(geometry.wrapperClientWidth);
+      expect(geometry.documentScrollWidth).toBeLessThanOrEqual(geometry.documentClientWidth);
+    });
+
+    test('600px vertical timeline retains events on both sides', async ({ page }) => {
+      await page.setViewportSize({ width: 700, height: 800 });
+      await page.goto('/iframe.html?id=components-timelinecomponent--vertical&viewMode=story');
+      await waitForTimelineReady(page);
+      const timeline = page.locator('timeline-component');
+      await timeline.evaluate((element) => {
+        (element as HTMLElement).style.width = '600px';
+      });
+      await page.waitForFunction(() => {
+        const element = document.querySelector('timeline-component');
+        const axis = element?.shadowRoot?.querySelector('[part="axis-line"]')?.getAttribute('d');
+        return axis?.startsWith('M 300,');
+      });
+
+      const sides = await timeline.evaluate((element) => {
+        const axisPath = element
+          .shadowRoot!.querySelector('[part="axis-line"]')!
+          .getAttribute('d')!;
+        const axisX = Number(/^M ([\d.]+),/.exec(axisPath)?.[1]);
+        return {
+          axisX,
+          events: Array.from(element.querySelectorAll<HTMLElement>('timeline-event')).map(
+            (event) => ({ left: Number.parseFloat(event.style.left), width: event.offsetWidth })
+          ),
+        };
+      });
+
+      expect(sides.events.some((event) => event.left + event.width < sides.axisX)).toBe(true);
+      expect(sides.events.some((event) => event.left > sides.axisX)).toBe(true);
+    });
+
+    test('standalone event is visible and focusable without positioning workarounds', async ({
+      page,
+    }) => {
+      await page.goto('/iframe.html?id=components-timelineevent--without-image&viewMode=story');
+      const event = page.locator('timeline-event');
+      await waitForEventReady(event);
+
+      await expect(event).toBeVisible();
+      await expect(event).toHaveCSS('position', 'relative');
+      await expect(event).toHaveAttribute('tabindex', '0');
+      await event.focus();
+      await expect(event).toBeFocused();
+      await expect(event).not.toHaveAttribute('style', /position|visibility/);
+    });
+
+    test('list exposes one date per event with list and listitem semantics', async ({ page }) => {
+      await page.goto(
+        '/iframe.html?id=components-timelinecomponent--list-view&viewMode=story&globals=theme:dark'
+      );
+      await waitForTimelineReady(page);
+
+      const timeline = page.locator('timeline-component');
+      const list = timeline.locator('.scroll-wrapper');
+      await expect(list).toHaveRole('list');
+      await expect(list).toHaveAccessibleName('A list view of project milestones.');
+
+      const events = timeline.locator('timeline-event');
+      await expect(events).toHaveCount(5);
+      for (const event of await events.all()) {
+        await expect(event).toHaveRole('listitem');
+      }
+
+      const firstDate = events.first().locator('time');
+      await expect(firstDate).toHaveCount(1);
+      await expect(firstDate).toBeVisible();
+      await expect(firstDate).toHaveText('March 15, 2024');
+      const accessibilityTree = await list.ariaSnapshot();
+      expect(accessibilityTree.match(/March 15, 2024/g)).toHaveLength(1);
+    });
+
+    test('decorative placeholder is hidden and supplied image alt is exposed', async ({ page }) => {
+      await page.goto('/iframe.html?id=components-timelineevent--without-image&viewMode=story');
+      const placeholderEvent = page.locator('timeline-event');
+      await waitForEventReady(placeholderEvent);
+      await expect(placeholderEvent.locator('.image-placeholder')).toHaveAttribute(
+        'aria-hidden',
+        'true'
+      );
+      expect(await placeholderEvent.ariaSnapshot()).not.toContain('Timeline event for 2024-03-15');
+
+      await page.goto('/iframe.html?id=components-timelineevent--with-image&viewMode=story');
+      const imageEvent = page.locator('timeline-event');
+      await waitForEventReady(imageEvent);
+      await expect(imageEvent.locator('img')).toHaveAccessibleName('Approved design mockups');
+      expect(await imageEvent.ariaSnapshot()).toContain('Approved design mockups');
+    });
+
+    test('omitted timeline label falls back to Timeline', async ({ page }) => {
+      await page.goto('/iframe.html?id=components-timelinecomponent--empty&viewMode=story');
+      await waitForTimelineReady(page);
+      const timeline = page.locator('timeline-component');
+      await timeline.evaluate(async (element) => {
+        element.removeAttribute('label');
+        await (element as HTMLElement & { updateComplete: Promise<unknown> }).updateComplete;
+      });
+
+      const wrapper = timeline.locator('.scroll-wrapper');
+      await expect(wrapper).toHaveRole('region');
+      await expect(wrapper).toHaveAccessibleName('Timeline');
+    });
+  });
+
   test.describe('TimelineEvent', () => {
     test('event with image has no accessibility violations', async ({ page }) => {
       await page.goto('/iframe.html?id=components-timelineevent--with-image&viewMode=story');
@@ -255,9 +398,9 @@ test.describe('@accessibility Accessibility Tests', () => {
         await page.goto(`/iframe.html?id=components-timelinecomponent--${story}&viewMode=story`);
         await waitForTimelineReady(page);
 
-        const region = page.locator('timeline-component').locator('.scroll-wrapper');
-        await expect(region).toHaveRole('region');
-        await expect(region).toHaveAccessibleName(/\S+/);
+        const wrapper = page.locator('timeline-component').locator('.scroll-wrapper');
+        await expect(wrapper).toHaveRole(story === 'list-view' ? 'list' : 'region');
+        await expect(wrapper).toHaveAccessibleName(/\S+/);
       });
     }
 
