@@ -22,6 +22,11 @@ interface ManagedEventSnapshot {
   styles: Record<string, { value: string; priority: string }>;
 }
 
+interface MarkerEntry {
+  date: string;
+  content: string | number;
+}
+
 const OWNED_EVENT_STYLE_PROPERTIES = [
   'position',
   'left',
@@ -596,15 +601,31 @@ export class TimelineComponent extends LitElement {
   private _calculateVerticalLayout(container: HTMLElement): void {
     const containerWidth = container.parentElement?.clientWidth || container.clientWidth;
     const mobile = containerWidth < 600;
-    const availableMobileWidth = Math.max(0, containerWidth - 70);
+    const initialData = this._getDateRangeAndEvents();
+    if (!initialData) {
+      this._clearLayout(container);
+      return;
+    }
+
+    let mobileAxisX = 0;
+    let mobileCardX = 0;
     if (mobile) {
+      const initialDuration = initialData.endDate.getTime() - initialData.startDate.getTime();
+      const markerEntries = this._generateMarkerEntries(
+        initialData.startDate,
+        initialData.endDate,
+        initialDuration
+      );
+      mobileAxisX = Math.max(30, Math.ceil(this._measureMarkerLabelWidth(markerEntries)) + 24);
+      mobileCardX = mobileAxisX + 30;
+      const availableMobileWidth = Math.max(0, containerWidth - mobileCardX - 16);
       for (const event of this._events) {
         event.style.maxWidth = `${availableMobileWidth}px`;
       }
     }
 
-    // Apply responsive constraints before reading geometry so wrapped card heights are current.
-    const data = this._getDateRangeAndEvents();
+    // Apply responsive constraints before using card geometry so wrapped heights are current.
+    const data = mobile ? this._getDateRangeAndEvents() : initialData;
     if (!data) {
       this._clearLayout(container);
       return;
@@ -618,7 +639,7 @@ export class TimelineComponent extends LitElement {
       margin +
       ((this._timestamp(date) - data.startDate.getTime()) / duration) *
         (axisContentHeight - 2 * margin);
-    const axisX = mobile ? 24 : containerWidth / 2;
+    const axisX = mobile ? mobileAxisX : containerWidth / 2;
     const gap =
       parseFloat(getComputedStyle(this).getPropertyValue('--timeline-v-column-gap')) || 100;
     const sideBottom: Record<'left' | 'right', number> = { left: -30, right: -30 };
@@ -626,7 +647,7 @@ export class TimelineComponent extends LitElement {
     const layouts: EventLayout[] = data.sortedEvents.map((event, index) => {
       const side: 'left' | 'right' = mobile || index % 2 === 1 ? 'right' : 'left';
       const x = mobile
-        ? 54
+        ? mobileCardX
         : side === 'left'
           ? Math.max(0, axisX - gap - event.width)
           : axisX + gap;
@@ -657,15 +678,7 @@ export class TimelineComponent extends LitElement {
         return `M ${edgeX},${layout.y + layout.height / 2} L ${axisX},${dateToY(layout.date)}`;
       }),
       dots: layouts.map((layout) => ({ cx: axisX, cy: dateToY(layout.date) })),
-      markers: this._generateMarkers(
-        data.startDate,
-        data.endDate,
-        duration,
-        dateToY,
-        axisX,
-        true,
-        mobile
-      ),
+      markers: this._generateMarkers(data.startDate, data.endDate, duration, dateToY, axisX, true),
     };
     this._applyLayouts(layouts, false);
   }
@@ -680,16 +693,12 @@ export class TimelineComponent extends LitElement {
     }
   }
 
-  private _generateMarkers(
+  private _generateMarkerEntries(
     startDate: Date,
     endDate: Date,
-    totalDurationMs: number,
-    posFunc: (date: string) => number,
-    axisPos: number,
-    isVertical: boolean,
-    placeVerticalTextRight = false
-  ): MarkerData[] {
-    const markers: MarkerData[] = [];
+    totalDurationMs: number
+  ): MarkerEntry[] {
+    const entries: MarkerEntry[] = [];
     const twoYearsInMs = 2 * 365.25 * 24 * 60 * 60 * 1000;
 
     if (totalDurationMs <= twoYearsInMs) {
@@ -697,55 +706,65 @@ export class TimelineComponent extends LitElement {
         Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1, 12)
       );
       while (currentMonth <= endDate) {
-        const pos = posFunc(currentMonth.toISOString().slice(0, 10));
-        const text = currentMonth.toLocaleDateString('en-US', {
-          month: 'short',
-          year: '2-digit',
-          timeZone: 'UTC',
+        entries.push({
+          date: currentMonth.toISOString().slice(0, 10),
+          content: currentMonth.toLocaleDateString('en-US', {
+            month: 'short',
+            year: '2-digit',
+            timeZone: 'UTC',
+          }),
         });
-        if (isVertical) {
-          markers.push({
-            line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
-            text: {
-              content: text,
-              x: placeVerticalTextRight ? axisPos + 20 : axisPos - 20,
-              y: pos + 4,
-              anchor: placeVerticalTextRight ? 'start' : 'end',
-            },
-          });
-        } else {
-          markers.push({
-            line: { x1: pos, y1: axisPos - 10, x2: pos, y2: axisPos + 10 },
-            text: { content: text, x: pos, y: axisPos + 25, anchor: 'middle' },
-          });
-        }
         currentMonth.setUTCMonth(currentMonth.getUTCMonth() + 1);
       }
     } else {
       for (let year = startDate.getUTCFullYear(); year <= endDate.getUTCFullYear(); year++) {
-        if (year % 5 !== 0) {
-          continue;
-        }
-        const pos = posFunc(`${year}-01-01`);
-        if (isVertical) {
-          markers.push({
-            line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
-            text: {
-              content: year,
-              x: placeVerticalTextRight ? axisPos + 20 : axisPos - 20,
-              y: pos + 4,
-              anchor: placeVerticalTextRight ? 'start' : 'end',
-            },
-          });
-        } else {
-          markers.push({
-            line: { x1: pos, y1: axisPos - 10, x2: pos, y2: axisPos + 10 },
-            text: { content: year, x: pos, y: axisPos + 25, anchor: 'middle' },
-          });
+        if (year % 5 === 0) {
+          entries.push({ date: `${year}-01-01`, content: year });
         }
       }
     }
-    return markers;
+    return entries;
+  }
+
+  private _measureMarkerLabelWidth(entries: MarkerEntry[]): number {
+    const svgLayer = this.shadowRoot?.querySelector<SVGSVGElement>('.svg-layer');
+    if (!svgLayer) {
+      return 0;
+    }
+    const probe = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    probe.classList.add('marker-text');
+    probe.style.visibility = 'hidden';
+    svgLayer.append(probe);
+
+    let maxWidth = 0;
+    for (const entry of entries) {
+      probe.textContent = String(entry.content);
+      maxWidth = Math.max(maxWidth, probe.getBoundingClientRect().width);
+    }
+    probe.remove();
+    return maxWidth;
+  }
+
+  private _generateMarkers(
+    startDate: Date,
+    endDate: Date,
+    totalDurationMs: number,
+    posFunc: (date: string) => number,
+    axisPos: number,
+    isVertical: boolean
+  ): MarkerData[] {
+    return this._generateMarkerEntries(startDate, endDate, totalDurationMs).map((entry) => {
+      const pos = posFunc(entry.date);
+      return isVertical
+        ? {
+            line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
+            text: { content: entry.content, x: axisPos - 20, y: pos + 4, anchor: 'end' },
+          }
+        : {
+            line: { x1: pos, y1: axisPos - 10, x2: pos, y2: axisPos + 10 },
+            text: { content: entry.content, x: pos, y: axisPos + 25, anchor: 'middle' },
+          };
+    });
   }
 
   override render() {

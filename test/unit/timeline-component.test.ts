@@ -562,9 +562,10 @@ describe('TimelineComponent', () => {
 
       const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.scroll-wrapper')!;
       const axisPath = el.shadowRoot!.querySelector('[part="axis-line"]')!.getAttribute('d')!;
-      expect(axisPath).to.match(/^M 24,/);
+      const axisX = Number(axisPath.match(/^M ([\d.]+),/)?.[1]);
+      expect(axisX).to.be.at.least(0);
       for (const event of Array.from(el.children) as HTMLElement[]) {
-        expect(parseFloat(event.style.left)).to.be.at.least(54);
+        expect(parseFloat(event.style.left)).to.be.at.least(axisX + 30);
         expect(event.getBoundingClientRect().left).to.be.at.least(
           parent.getBoundingClientRect().left
         );
@@ -572,10 +573,44 @@ describe('TimelineComponent', () => {
           parent.getBoundingClientRect().right
         );
       }
+      for (const marker of Array.from(
+        el.shadowRoot!.querySelectorAll<SVGTextElement>('[part="marker-text"]')
+      )) {
+        expect(marker.getBoundingClientRect().left).to.be.at.least(
+          parent.getBoundingClientRect().left
+        );
+      }
       expect(wrapper.scrollWidth).to.be.at.most(wrapper.clientWidth);
       parent.remove();
     });
   }
+
+  it('keeps a mobile marker-aligned date label out of its card gutter', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '320px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = '<timeline-event date="2024-06-01"><h3>Event</h3></timeline-event>';
+    parent.append(el);
+    await settleLayout(el);
+
+    const eventRect = el.firstElementChild!.getBoundingClientRect();
+    const marker = Array.from(
+      el.shadowRoot!.querySelectorAll<SVGTextElement>('[part="marker-text"]')
+    ).find((candidate) => candidate.textContent === 'Jun 24')!;
+    const markerRect = marker.getBoundingClientRect();
+    const intersects =
+      markerRect.left < eventRect.right &&
+      markerRect.right > eventRect.left &&
+      markerRect.top < eventRect.bottom &&
+      markerRect.bottom > eventRect.top;
+
+    expect(intersects).to.be.false;
+    expect(markerRect.left).to.be.at.least(parent.getBoundingClientRect().left);
+    expect(markerRect.right).to.be.at.most(eventRect.left);
+    parent.remove();
+  });
 
   it('alternates vertical event sides at 600px', async () => {
     const parent = document.createElement('div');
