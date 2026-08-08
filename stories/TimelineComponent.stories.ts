@@ -80,33 +80,21 @@ export const HorizontalYearly: Story = {
         end-year="${args.endYear}"
         label="${args.label}"
       >
-        <timeline-event
-          date="1972-08-13"
-          image-src="https://images.pexels.com/photos/207692/pexels-photo-207692.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="1972-08-13" image-src="/assets/timeline-school.svg">
           <h3>Parkside Elementary School</h3>
           <p>I began my teaching career here in a 3rd grade classroom and never left!</p>
         </timeline-event>
-        <timeline-event
-          date="1978-03-10"
-          image-src="https://images.pexels.com/photos/7148596/pexels-photo-7148596.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="1978-03-10" image-src="/assets/timeline-team.svg">
           <h3>My Co-Teacher, Jenny</h3>
           <p>
             Me and Jenny, who helped me stay sane through all the years of standardized testing...
           </p>
         </timeline-event>
-        <timeline-event
-          date="1991-10-15"
-          image-src="https://images.pexels.com/photos/5212345/pexels-photo-5212345.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="1991-10-15" image-src="/assets/timeline-science.svg">
           <h3>Science Fair</h3>
           <p>Some students presenting their project for our annual classroom science fair.</p>
         </timeline-event>
-        <timeline-event
-          date="2001-04-21"
-          image-src="https://images.pexels.com/photos/8617966/pexels-photo-8617966.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="2001-04-21" image-src="/assets/timeline-school.svg">
           <h3>Poetry Unit</h3>
           <p>Teaching my favorite unit where students were challenged to write poems...</p>
         </timeline-event>
@@ -137,10 +125,7 @@ export const HorizontalMonthly: Story = {
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
         </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="2024-05-22" image-src="/assets/timeline-design.svg">
           <h3>Design Mockups Approved</h3>
           <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
         </timeline-event>
@@ -148,10 +133,7 @@ export const HorizontalMonthly: Story = {
           <h3>Development Sprint 1</h3>
           <p>First development sprint starts, focusing on the core architecture and homepage.</p>
         </timeline-event>
-        <timeline-event
-          date="2024-07-01"
-          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="2024-07-01" image-src="/assets/timeline-launch.svg">
           <h3>Alpha Version Deployed</h3>
           <p>An internal alpha version is deployed for testing and feedback from the team.</p>
         </timeline-event>
@@ -186,10 +168,7 @@ export const Vertical: Story = {
           <h3>Project Kick-off</h3>
           <p>The initial planning and brainstorming phase for the new company website begins.</p>
         </timeline-event>
-        <timeline-event
-          date="2024-05-22"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="2024-05-22" image-src="/assets/timeline-design.svg">
           <h3>Design Mockups Approved</h3>
           <p>After several iterations, the design team gets final approval on the UI/UX mockups.</p>
         </timeline-event>
@@ -197,10 +176,7 @@ export const Vertical: Story = {
           <h3>Development Sprint 1</h3>
           <p>First development sprint starts, focusing on the core architecture and homepage.</p>
         </timeline-event>
-        <timeline-event
-          date="2024-07-01"
-          image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="2024-07-01" image-src="/assets/timeline-launch.svg">
           <h3>Alpha Version Deployed</h3>
           <p>An internal alpha version is deployed for testing and feedback from the team.</p>
         </timeline-event>
@@ -236,10 +212,7 @@ export const ListView: Story = {
             <h3>Project Kick-off</h3>
             <p>The initial planning and brainstorming phase for the new company website begins.</p>
           </timeline-event>
-          <timeline-event
-            date="2024-05-22"
-            image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-          >
+          <timeline-event date="2024-05-22" image-src="/assets/timeline-design.svg">
             <h3>Design Mockups Approved</h3>
             <p>
               After several iterations, the design team gets final approval on the UI/UX mockups.
@@ -249,10 +222,7 @@ export const ListView: Story = {
             <h3>Development Sprint 1</h3>
             <p>First development sprint starts, focusing on the core architecture and homepage.</p>
           </timeline-event>
-          <timeline-event
-            date="2024-07-01"
-            image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
-          >
+          <timeline-event date="2024-07-01" image-src="/assets/timeline-launch.svg">
             <h3>Alpha Version Deployed</h3>
             <p>An internal alpha version is deployed for testing and feedback from the team.</p>
           </timeline-event>
@@ -305,10 +275,7 @@ export const SingleEvent: Story = {
     const { vertical, list } = getDisplayProps(args.display);
     return html`
       <timeline-component ?vertical=${vertical} ?list=${list} label="${args.label}">
-        <timeline-event
-          date="2024-06-15"
-          image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
-        >
+        <timeline-event date="2024-06-15" image-src="/assets/timeline-launch.svg">
           <h3>The Big Launch</h3>
           <p>Our product finally launches to the public after months of development.</p>
         </timeline-event>

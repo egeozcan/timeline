@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './test/visual',
   snapshotDir: './test/visual/__snapshots__',
-  snapshotPathTemplate: '{snapshotDir}/{testFilePath}/{projectName}/{arg}{ext}',
+  snapshotPathTemplate: '{snapshotDir}/{testFilePath}/{platform}/{projectName}/{arg}{ext}',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -26,10 +26,12 @@ export default defineConfig({
     },
     {
       name: 'firefox',
+      grepInvert: /@visual/,
       use: { ...devices['Desktop Firefox'] },
     },
     {
       name: 'webkit',
+      grepInvert: /@visual/,
       use: { ...devices['Desktop Safari'] },
     },
   ],

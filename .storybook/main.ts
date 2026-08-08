@@ -8,7 +8,7 @@ const config: StorybookConfig = {
     options: {},
   },
   docs: {},
-  staticDirs: ['../stories/assets'],
+  staticDirs: [{ from: '../stories/assets', to: '/assets' }],
 };
 
 export default config;

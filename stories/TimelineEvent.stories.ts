@@ -33,7 +33,7 @@ export const WithImage: Story = {
   render: () => html`
     <timeline-event
       date="2024-03-15"
-      image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
+      image-src="/assets/timeline-design.svg"
       style="position: relative; visibility: visible;"
     >
       <h3>Design Mockups Approved</h3>
@@ -57,7 +57,7 @@ export const LongContent: Story = {
   render: () => html`
     <timeline-event
       date="2024-03-15"
-      image-src="https://images.pexels.com/photos/5926382/pexels-photo-5926382.jpeg?auto=compress&cs=tinysrgb&w=600"
+      image-src="/assets/timeline-launch.svg"
       style="position: relative; visibility: visible;"
     >
       <h3>This is a very long title that should be truncated after two lines of text</h3>
@@ -75,7 +75,7 @@ export const CustomWidth: Story = {
   render: () => html`
     <timeline-event
       date="2024-03-15"
-      image-src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600"
+      image-src="/assets/timeline-design.svg"
       style="position: relative; visibility: visible; --timeline-event-width: 350px;"
     >
       <h3>Wider Event Card</h3>

@@ -43,9 +43,8 @@ const preview: Preview = {
 
       return html`
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
           body {
-            font-family: 'Inter', sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
           }
           /* Minimal styling for unstyled theme visibility */
           .timeline-unstyled {

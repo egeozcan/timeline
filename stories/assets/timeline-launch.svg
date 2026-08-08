@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360" viewBox="0 0 600 360">
+  <rect width="600" height="360" fill="#0f172a" />
+  <circle cx="95" cy="75" r="7" fill="#f8fafc" />
+  <circle cx="500" cy="90" r="9" fill="#f8fafc" />
+  <circle cx="455" cy="45" r="5" fill="#facc15" />
+  <circle cx="135" cy="155" r="5" fill="#facc15" />
+  <path d="M300 45C365 90 390 160 370 225L300 285L230 225C210 160 235 90 300 45Z" fill="#e2e8f0" />
+  <path d="M300 45C335 70 358 102 370 138H300Z" fill="#38bdf8" />
+  <path d="M300 45C265 70 242 102 230 138H300Z" fill="#7dd3fc" />
+  <circle cx="300" cy="160" r="38" fill="#1d4ed8" stroke="#0c4a6e" stroke-width="10" />
+  <path d="M230 205L170 275L245 260Z" fill="#ef4444" />
+  <path d="M370 205L430 275L355 260Z" fill="#ef4444" />
+  <path d="M270 275L300 335L330 275Z" fill="#f97316" />
+  <path d="M282 275L300 315L318 275Z" fill="#facc15" />
+</svg>
