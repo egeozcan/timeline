@@ -1,16 +1,17 @@
-name: Publish to npm
+name: CI
 
 on:
-  release:
-    types: [published]
+  pull_request:
+  push:
+    branches:
+      - master
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
+  validate:
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +21,6 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: npm ci
@@ -34,5 +34,5 @@ jobs:
       - name: Build Storybook
         run: npm run build-storybook
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
+      - name: Run accessibility and visual tests
+        run: npm run test:visual

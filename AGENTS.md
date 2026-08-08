@@ -79,13 +79,15 @@ Build output goes to `dist/` with `.js` and `.d.ts` files.
 ### Testing
 
 ```bash
-npm test                   # Run all functional tests (Chrome, Firefox, Safari)
-npm run test:watch         # Watch mode for tests
-npm run test:visual        # Run visual regression tests
+npm test                   # Build, then run unit tests in Chrome, Firefox, and Safari
+npm run test:unit          # Run unit tests against already-built dist output
+npm run test:watch         # Build once, then watch unit tests
+npm run test:package       # Build, analyze, and smoke-test the packed package
+npm run test:visual        # Run visual/accessibility Playwright tests
 npm run test:visual:update # Update visual snapshots
 ```
 
-**Important**: Functional tests import from `dist/`, so run `npm run build` before `npm test` if you've made source changes.
+Functional tests import from `dist/`. Use `npm test` for the fresh-checkout-safe build-and-test path; use `npm run test:unit` only when current output is already built.
 
 ### Storybook
 
@@ -197,23 +199,24 @@ export const WithImage: StoryObj = {
 - `list` (boolean) - Display as simple list without timeline axis
 - `start-year` (number) - Override timeline start year
 - `end-year` (number) - Override timeline end year
-- `label` (string) - Accessible label for the timeline region
+- `label` (string) - Accessible label for the timeline region; omitted or empty values render as `Timeline`
 
 **CSS Custom Properties:**
 
-- `--timeline-axis-color` - Main axis line color
-- `--timeline-dot-color` - Event dot color
-- `--timeline-connector-color` - Connector line color
-- `--timeline-marker-text-color` - Date marker text color
-- `--timeline-h-row-gap` - Row gap in horizontal mode
-- `--timeline-v-column-gap` - Column gap in vertical mode
+- `--timeline-axis-color`, `--timeline-axis-width` - Main axis color and stroke width
+- `--timeline-connector-color`, `--timeline-connector-width` - Connector color and stroke width
+- `--timeline-dot-color`, `--timeline-dot-size` - Event dot color and radius
+- `--timeline-marker-color`, `--timeline-marker-font-size` - Marker tick color and label size
+- `--timeline-h-row-gap`, `--timeline-v-column-gap` - Axis-mode packing gaps
+- `--timeline-list-gap`, `--timeline-list-padding` - List spacing and padding
 
 ### `<timeline-event>`
 
 **Attributes:**
 
-- `date` (string) - Event date in YYYY-MM-DD format (required)
+- `date` (string) - Canonical calendar date in strict YYYY-MM-DD format (required)
 - `image-src` (string) - URL for event image (optional)
+- `image-alt` (string) - Alternative text for meaningful images; defaults to empty for decorative images
 
 **Slots:**
 
@@ -221,11 +224,13 @@ export const WithImage: StoryObj = {
 
 **CSS Custom Properties:**
 
-- `--timeline-event-width` - Card width
-- `--timeline-event-bg-color` - Card background
-- `--timeline-event-border-color` - Card border color
-- `--timeline-event-heading-color` - Title text color
-- `--timeline-event-text-color` - Description text color
+- Card: `--timeline-event-width`, `--timeline-event-bg-color`, `--timeline-event-border-color`, `--timeline-event-border-radius`, `--timeline-event-shadow`
+- Image/content: `--timeline-event-image-height`, `--timeline-event-content-padding`, `--timeline-event-content-min-height`
+- Heading: `--timeline-event-heading-color`, `--timeline-event-heading-font-size`, `--timeline-event-heading-font-weight`
+- Text: `--timeline-event-text-color`, `--timeline-event-text-font-size`
+- Placeholder: `--timeline-event-placeholder-bg`, `--timeline-event-placeholder-color`
+- Date/focus: `--timeline-event-date-color`, `--timeline-event-date-font-size`, `--timeline-event-date-font-weight`, `--timeline-event-focus-offset`
+- List width: `--timeline-list-event-max-width`
 
 **CSS Parts (for external styling):**
 
@@ -243,11 +248,12 @@ The `TimelineComponent` uses different layout algorithms based on mode:
 
 **Horizontal/Vertical modes:**
 
-1. Collects all `<timeline-event>` children and their dimensions
-2. Sorts events by date
+1. Collects valid direct `<timeline-event>` children and their dimensions
+2. Sorts and reorders valid direct children chronologically in the light DOM
 3. Positions events to avoid overlap using a row/column packing algorithm
 4. Generates SVG for axis, connectors, dots, and date markers
-5. Uses ResizeObserver to recalculate on container resize
+5. Uses observers to recalculate for child, date, content, mode, and container changes
+6. Uses a one-sided vertical layout below 600px and alternating sides at 600px and wider
 
 **List mode:**
 
@@ -257,11 +263,9 @@ The `TimelineComponent` uses different layout algorithms based on mode:
 
 ### Date Handling
 
-All dates use the `T12:00:00Z` suffix when parsing to avoid timezone issues:
+Dates are accepted only when they are canonical, real `YYYY-MM-DD` calendar dates and are parsed/formatted in UTC. Invalid or missing-date events set invalid state, are hidden and excluded from layout, and warn without throwing. Keep date validation centralized in `isValidDate` rather than relying on JavaScript's date normalization.
 
-```typescript
-const date = new Date(dateString + 'T12:00:00Z');
-```
+Standalone `<timeline-event>` elements remain relatively positioned, visible, and focusable. A parent `<timeline-component>` owns managed positioning, layout mode, chronological ordering, and roving tabindex. Images default to empty alternative text, `image-alt` supplies meaningful alternative text, and placeholders stay decorative.
 
 ### Styling Architecture
 
@@ -272,29 +276,26 @@ const date = new Date(dateString + 'T12:00:00Z');
   - `.timeline-dark-theme` - Dark theme
   - `.timeline-light-theme` - Light theme
   - `.timeline-modern-theme` - Modern glass-morphism theme
+- Bundlers import themes through the package export, for example `@import 'lit-timeline/styles/theme-dark.css';`.
+- A direct installed-package file link uses `node_modules/lit-timeline/src/styles/theme-dark.css`.
 
 ## Known Issues & Workarounds
 
-### ResizeObserver Loop Errors in Tests
-
-The test runner configuration suppresses ResizeObserver loop errors which are expected when testing components that use ResizeObserver. This is handled in `web-test-runner.config.mjs`.
-
 ### Decorator Transformation
 
-Tests must import from `dist/` rather than `src/` because esbuild doesn't properly transform Lit decorators. Always build before testing.
+Tests must import from `dist/` rather than `src/` because esbuild doesn't properly transform Lit decorators. `npm test` builds before running them; when invoking `npm run test:unit` directly, build first.
 
 ## Package Publishing
 
 Before publishing:
 
 1. Update version in `package.json`
-2. Run `npm run build`
-3. Run `npm test` to ensure all tests pass
-4. Run `npm run build-storybook` to verify documentation
-5. Run `npm publish`
+2. Run `npm run ci`
+3. Run `npm run build-storybook` to verify documentation
+4. Run `npm publish`
 
 The package exports:
 
 - Main entry: `lit-timeline` → `dist/index.js`
 - Individual components: `lit-timeline/timeline-event.js`, `lit-timeline/timeline-component.js`
-- Theme CSS files: `lit-timeline/dist/styles/theme-dark.css`, `theme-light.css`, `theme-modern.css`
+- Theme CSS exports: `lit-timeline/styles/theme-dark.css`, `lit-timeline/styles/theme-light.css`, `lit-timeline/styles/theme-modern.css`

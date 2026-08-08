@@ -8,7 +8,7 @@ A customizable timeline component built with [Lit](https://lit.dev/) for display
 - **Auto date range detection** - Automatically determines timeline bounds from events
 - **Pre-built themes** - Dark, light, and modern themes included
 - **CSS Parts theming** - Fully customizable appearance through CSS `::part()` selectors
-- **Responsive design** - Scrollable container adapts to different screen sizes
+- **Responsive design** - Scrollable container adapts to different screen sizes, with a one-sided mobile vertical layout
 - **Accessible** - ARIA labels, keyboard navigation, and screen reader support
 - **Lightweight** - Built on Lit with minimal dependencies
 
@@ -51,7 +51,7 @@ npm install lit
     <p>Initial planning phase begins.</p>
   </timeline-event>
 
-  <timeline-event date="2024-06-01" image-src="launch.jpg">
+  <timeline-event date="2024-06-01" image-src="launch.jpg" image-alt="Product launch">
     <h3>Product Launch</h3>
     <p>Official release to the public.</p>
   </timeline-event>
@@ -66,13 +66,13 @@ The main container that positions events on a timeline axis.
 
 #### Attributes
 
-| Attribute    | Type    | Default | Description                                         |
-| ------------ | ------- | ------- | --------------------------------------------------- |
-| `vertical`   | boolean | `false` | Display timeline vertically instead of horizontally |
-| `list`       | boolean | `false` | Display as a simple list without timeline axis      |
-| `start-year` | number  | auto    | Override start year for timeline range              |
-| `end-year`   | number  | auto    | Override end year for timeline range                |
-| `label`      | string  | `""`    | Accessible label for the timeline region            |
+| Attribute    | Type    | Default    | Description                                         |
+| ------------ | ------- | ---------- | --------------------------------------------------- |
+| `vertical`   | boolean | `false`    | Display timeline vertically instead of horizontally |
+| `list`       | boolean | `false`    | Display as a simple list without timeline axis      |
+| `start-year` | number  | auto       | Override start year for timeline range              |
+| `end-year`   | number  | auto       | Override end year for timeline range                |
+| `label`      | string  | `Timeline` | Accessible label for the timeline region            |
 
 #### Examples
 
@@ -118,10 +118,11 @@ Individual event cards displayed on the timeline.
 
 #### Attributes
 
-| Attribute   | Type   | Default  | Description                       |
-| ----------- | ------ | -------- | --------------------------------- |
-| `date`      | string | required | Event date in `YYYY-MM-DD` format |
-| `image-src` | string | `""`     | URL for the event header image    |
+| Attribute   | Type   | Default  | Description                                                  |
+| ----------- | ------ | -------- | ------------------------------------------------------------ |
+| `date`      | string | required | Canonical calendar date in strict `YYYY-MM-DD` format        |
+| `image-src` | string | `""`     | URL for the event header image                               |
+| `image-alt` | string | `""`     | Alternative text for a meaningful image; empty is decorative |
 
 #### Slots
 
@@ -134,7 +135,11 @@ Individual event cards displayed on the timeline.
 **With image:**
 
 ```html
-<timeline-event date="2024-03-15" image-src="photo.jpg">
+<timeline-event
+  date="2024-03-15"
+  image-src="photo.jpg"
+  image-alt="Speaker presenting at the conference"
+>
   <h3>Conference Talk</h3>
   <p>Presented at the annual tech conference.</p>
 </timeline-event>
@@ -148,6 +153,8 @@ Individual event cards displayed on the timeline.
   <p>Quarterly planning session with the team.</p>
 </timeline-event>
 ```
+
+A standalone `<timeline-event>` is visible, relatively positioned, and keyboard focusable. When it is a direct child of `<timeline-component>`, the parent takes over its positioning and roving tabindex. Images are decorative by default; set `image-alt` only when the image conveys content not already present in the event text. Placeholder artwork is always decorative.
 
 ## Styling
 
@@ -167,11 +174,11 @@ Three ready-to-use themes are included:
 
 ```html
 <!-- Import the theme CSS -->
-<link rel="stylesheet" href="node_modules/lit-timeline/dist/styles/theme-dark.css" />
+<link rel="stylesheet" href="node_modules/lit-timeline/src/styles/theme-dark.css" />
 
 <!-- Or with a bundler -->
 <style>
-  @import 'lit-timeline/dist/styles/theme-dark.css';
+  @import 'lit-timeline/styles/theme-dark.css';
 </style>
 
 <!-- Wrap your timeline in the theme class -->
@@ -236,28 +243,47 @@ timeline-event p {
 
 ### CSS Custom Properties
 
-Some layout properties can still be customized via CSS custom properties:
+`<timeline-component>` supports these properties:
 
-```css
-timeline-component {
-  /* Layout spacing */
-  --timeline-h-row-gap: 330px; /* Horizontal mode row gap */
-  --timeline-v-column-gap: 100px; /* Vertical mode column gap */
-  --timeline-marker-font-size: 0.9rem;
-}
+| Property                      | Default  | Purpose                     |
+| ----------------------------- | -------- | --------------------------- |
+| `--timeline-axis-color`       | unset    | Axis color                  |
+| `--timeline-axis-width`       | `2`      | Axis stroke width           |
+| `--timeline-connector-color`  | unset    | Connector color             |
+| `--timeline-connector-width`  | `2`      | Connector stroke width      |
+| `--timeline-dot-color`        | unset    | Event dot color             |
+| `--timeline-dot-size`         | `5`      | Event dot radius            |
+| `--timeline-marker-color`     | unset    | Marker tick color           |
+| `--timeline-marker-font-size` | `0.9rem` | Marker label font size      |
+| `--timeline-h-row-gap`        | `330px`  | Horizontal-mode row gap     |
+| `--timeline-v-column-gap`     | `100px`  | Vertical-mode column gap    |
+| `--timeline-list-gap`         | `16px`   | List-mode event gap         |
+| `--timeline-list-padding`     | `20px`   | List-mode container padding |
 
-timeline-event {
-  /* Card layout */
-  --timeline-event-width: 250px;
-  --timeline-event-image-height: 140px;
-  --timeline-event-content-padding: 20px;
-  --timeline-event-content-min-height: 125px;
-  --timeline-event-heading-font-size: 1.1rem;
-  --timeline-event-heading-font-weight: 700;
-  --timeline-event-text-font-size: 0.9rem;
-  --timeline-event-focus-offset: 4px;
-}
-```
+`<timeline-event>` supports these properties:
+
+| Property                               | Default                          | Purpose                      |
+| -------------------------------------- | -------------------------------- | ---------------------------- |
+| `--timeline-event-width`               | `250px`                          | Card width                   |
+| `--timeline-event-bg-color`            | `#2c2c54`                        | Card background              |
+| `--timeline-event-border-color`        | `#47476b`                        | Card border color            |
+| `--timeline-event-border-radius`       | `16px`                           | Card corner radius           |
+| `--timeline-event-shadow`              | `0 10px 30px rgba(0, 0, 0, 0.3)` | Card box shadow              |
+| `--timeline-event-image-height`        | `140px`                          | Image area height            |
+| `--timeline-event-content-padding`     | `20px`                           | Content padding              |
+| `--timeline-event-content-min-height`  | `125px`                          | Content minimum height       |
+| `--timeline-event-heading-color`       | `#ffffff`                        | Slotted heading color        |
+| `--timeline-event-heading-font-size`   | `1.1rem`                         | Slotted heading font size    |
+| `--timeline-event-heading-font-weight` | `700`                            | Slotted heading font weight  |
+| `--timeline-event-text-color`          | `#a4a4c1`                        | Slotted paragraph color      |
+| `--timeline-event-text-font-size`      | `0.9rem`                         | Slotted paragraph font size  |
+| `--timeline-event-placeholder-bg`      | `#3a3a66`                        | Placeholder background       |
+| `--timeline-event-placeholder-color`   | `#8c8caf`                        | Placeholder text color       |
+| `--timeline-event-focus-offset`        | `4px`                            | Focus outline offset         |
+| `--timeline-event-date-font-size`      | `0.85rem`                        | List date font size          |
+| `--timeline-event-date-font-weight`    | `500`                            | List date font weight        |
+| `--timeline-event-date-color`          | `currentColor`                   | List date color              |
+| `--timeline-list-event-max-width`      | `600px`                          | List-mode card maximum width |
 
 ### CSS Parts
 
@@ -326,14 +352,18 @@ timeline-event::part(date) {
 }
 ```
 
-## Date Range Behavior
+## Date and Ordering Behavior
+
+Event dates must be real calendar dates in canonical `YYYY-MM-DD` form. For example, `2024-02-29` is accepted, while `2023-02-29`, `2024-2-09`, missing dates, and normalized overflow dates such as `2024-02-30` are invalid. Formatting uses UTC, so the displayed calendar day does not change with the viewer's time zone.
+
+Invalid or missing-date events are hidden, excluded from the date range and layout, and produce a deterministic console warning instead of breaking valid siblings. Direct valid `<timeline-event>` children are reordered chronologically in the light DOM, keeping visual, keyboard, and assistive-technology order aligned.
 
 The timeline automatically determines its date range:
 
 - **Short timelines** (< 2 years): Shows monthly markers (e.g., "Mar 24", "Apr 24")
 - **Long timelines** (≥ 2 years): Shows 5-year markers (e.g., "1990", "1995", "2000")
 
-Override this with `start-year` and `end-year` attributes for explicit control.
+Override this with `start-year` and `end-year` attributes for explicit control. Vertical timelines narrower than 600px use a one-sided layout with the axis on the left and every card on the right, without horizontal scrolling. At 600px and wider, vertical layouts alternate cards on both sides.
 
 ## Accessibility
 
@@ -410,6 +440,15 @@ const event = document.querySelector('timeline-event')!;
 console.log(event.date); // string
 ```
 
+## Development
+
+```bash
+npm test           # Build current source, then run cross-browser unit tests
+npm run test:unit  # Run unit tests against output that is already built
+npm run test:watch # Build once, then run unit tests in watch mode
+npm run test:package
+```
+
 ## License
 
-MIT
+[MIT](LICENSE)
