@@ -9,6 +9,20 @@ async function settleLayout(el: TimelineComponent): Promise<void> {
   );
 }
 
+async function waitFrames(count: number): Promise<void> {
+  for (let index = 0; index < count; index++) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+}
+
+function deepestActiveElement(root: Document | ShadowRoot = document): Element | null {
+  let active = root.activeElement;
+  while (active instanceof HTMLElement && active.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
+}
+
 describe('TimelineComponent', () => {
   it('renders with default horizontal layout', async () => {
     const el = await fixture<TimelineComponent>(html`
@@ -659,6 +673,240 @@ describe('TimelineComponent', () => {
       expect(event.getAttribute('role')).to.equal('listitem');
       expect(event.getAttribute('data-layout-mode')).to.equal('list');
     }
+  });
+
+  it('becomes quiescent after layout and does not continuously update', async () => {
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.innerHTML = '<timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>';
+    document.body.append(el);
+
+    await settleLayout(el);
+    await waitFrames(4);
+    const settledUpdate = el.updateComplete;
+    await settledUpdate;
+    await waitFrames(8);
+
+    expect(el.updateComplete).to.equal(settledUpdate);
+    el.remove();
+  });
+
+  it('preserves the deepest focused descendant when an attribute date change reorders events', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><button>First control</button></timeline-event>
+        <timeline-event date="2024-09-15"><button>Second control</button></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const moved = el.children[1] as HTMLElement;
+    const focusedButton = moved.querySelector('button')!;
+    focusedButton.focus();
+
+    moved.setAttribute('date', '2024-01-15');
+    await settleLayout(el);
+
+    expect(el.firstElementChild).to.equal(moved);
+    expect(deepestActiveElement()).to.equal(focusedButton);
+  });
+
+  it('reacts to both date property and date attribute changes', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+        <timeline-event date="2024-09-15"><h3>Second</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const first = el.children[0] as HTMLElement & {
+      date: string;
+      updateComplete: Promise<boolean>;
+    };
+    const second = el.children[1] as HTMLElement;
+
+    first.date = '2024-12-15';
+    await first.updateComplete;
+    await settleLayout(el);
+    expect(first.getAttribute('date')).to.equal('2024-12-15');
+    expect(el.lastElementChild).to.equal(first);
+
+    second.setAttribute('date', '2025-01-15');
+    await settleLayout(el);
+    expect(el.lastElementChild).to.equal(second);
+  });
+
+  it('measures mobile vertical cards after applying their wrapping max-width', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '320px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = `
+      <timeline-event date="2024-06-15" style="--timeline-event-width: 520px; --timeline-event-content-min-height: 0">
+        <div style="font-size: 20px">This deliberately long timeline event content wraps across many lines after the mobile maximum width is applied so its rendered height changes materially.</div>
+      </timeline-event>`;
+    parent.append(el);
+    await settleLayout(el);
+
+    const event = el.firstElementChild as HTMLElement;
+    const dotY = Number(el.shadowRoot!.querySelector('[part="dot"]')!.getAttribute('cy'));
+    const eventCenter = parseFloat(event.style.top) + event.offsetHeight / 2;
+    expect(event.offsetWidth).to.be.at.most(250);
+    expect(eventCenter).to.be.closeTo(dotY, 1);
+    parent.remove();
+  });
+
+  it('packs near-date vertical events without overlap on each side and bounds connectors', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '800px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = [
+      '2024-06-15',
+      '2024-06-15',
+      '2024-06-16',
+      '2024-06-16',
+      '2024-06-17',
+      '2024-06-17',
+    ]
+      .map(
+        (date, index) =>
+          `<timeline-event date="${date}"><h3>Event ${index}</h3><p>Collision content</p></timeline-event>`
+      )
+      .join('');
+    parent.append(el);
+    await settleLayout(el);
+
+    const events = Array.from(el.children) as HTMLElement[];
+    for (const side of [
+      events.filter((_, index) => index % 2 === 0),
+      events.filter((_, index) => index % 2 === 1),
+    ]) {
+      for (let firstIndex = 0; firstIndex < side.length; firstIndex++) {
+        for (let secondIndex = firstIndex + 1; secondIndex < side.length; secondIndex++) {
+          const first = side[firstIndex].getBoundingClientRect();
+          const second = side[secondIndex].getBoundingClientRect();
+          expect(first.bottom <= second.top || second.bottom <= first.top).to.be.true;
+        }
+      }
+    }
+
+    const container = el.shadowRoot!.querySelector<HTMLElement>('.timeline-container')!;
+    const containerTop = container.getBoundingClientRect().top;
+    for (const event of events) {
+      expect(parseFloat(event.style.top) + event.offsetHeight).to.be.at.most(
+        container.scrollHeight
+      );
+    }
+    const connectorPaths = Array.from(
+      el.shadowRoot!.querySelectorAll<SVGPathElement>('[part="connector-line"]')
+    );
+    expect(connectorPaths).to.have.length(events.length);
+    connectorPaths.forEach((path, index) => {
+      const startY = Number(/^M [^,]+,([\d.]+)/.exec(path.getAttribute('d') || '')?.[1]);
+      const rect = events[index].getBoundingClientRect();
+      expect(startY).to.be.closeTo(rect.top - containerTop + rect.height / 2, 1);
+    });
+    parent.remove();
+  });
+
+  it('works as a black box inside a real outer shadow root and preserves nested focus', async () => {
+    const outer = document.createElement('div');
+    const root = outer.attachShadow({ mode: 'open' });
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    const later = document.createElement('timeline-event');
+    later.setAttribute('date', '2024-09-15');
+    later.innerHTML = '<button>Focused descendant</button>';
+    const earlier = document.createElement('timeline-event');
+    earlier.setAttribute('date', '2024-03-15');
+    earlier.innerHTML = '<h3>Earlier</h3>';
+    const invalid = document.createElement('timeline-event');
+    invalid.setAttribute('date', 'invalid');
+    invalid.innerHTML = '<h3>Invalid</h3>';
+    el.append(later, invalid, earlier);
+    root.append(el);
+    document.body.append(outer);
+    await settleLayout(el);
+
+    expect(Array.from(el.children).map((event) => event.getAttribute('date'))).to.deep.equal([
+      '2024-03-15',
+      '2024-09-15',
+      'invalid',
+    ]);
+    expect(getComputedStyle(invalid).display).to.equal('none');
+    expect(invalid.hasAttribute('data-layout-ready')).to.be.false;
+    expect(el.shadowRoot!.querySelectorAll('[part="dot"]')).to.have.length(2);
+
+    const button = later.querySelector('button')!;
+    button.focus();
+    later.setAttribute('date', '2024-01-15');
+    await settleLayout(el);
+    expect(el.firstElementChild).to.equal(later);
+    expect(deepestActiveElement(root)).to.equal(button);
+    outer.remove();
+  });
+
+  it('reacts to rendered event size changes', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-06-15"><h3>Resizable</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    const event = el.firstElementChild as HTMLElement;
+    const beforeLeft = event.style.left;
+
+    event.style.setProperty('--timeline-event-width', '420px');
+    await waitFrames(4);
+
+    expect(event.offsetWidth).to.equal(420);
+    expect(event.style.left).not.to.equal(beforeLeft);
+  });
+
+  it('restores author role, tabindex, and owned inline styles when management ends', async () => {
+    const event = document.createElement('timeline-event');
+    event.setAttribute('date', '2024-06-15');
+    event.setAttribute('role', 'article');
+    event.setAttribute('tabindex', '7');
+    event.style.position = 'sticky';
+    event.style.left = '11px';
+    event.style.top = '12px';
+    event.style.maxWidth = '333px';
+    event.style.visibility = 'collapse';
+    const el = await fixture<TimelineComponent>(html`<timeline-component></timeline-component>`);
+    el.append(event);
+    await settleLayout(el);
+    event.remove();
+    await settleLayout(el);
+
+    expect(event.getAttribute('role')).to.equal('article');
+    expect(event.getAttribute('tabindex')).to.equal('7');
+    expect(event.style.position).to.equal('sticky');
+    expect(event.style.left).to.equal('11px');
+    expect(event.style.top).to.equal('12px');
+    expect(event.style.maxWidth).to.equal('333px');
+    expect(event.style.visibility).to.equal('collapse');
+  });
+
+  it('keeps mobile vertical marker labels fully inside the viewport', async () => {
+    const parent = document.createElement('div');
+    parent.style.width = '320px';
+    document.body.append(parent);
+    const el = document.createElement('timeline-component') as TimelineComponent;
+    el.vertical = true;
+    el.innerHTML = '<timeline-event date="2024-06-15"><h3>Event</h3></timeline-event>';
+    parent.append(el);
+    await settleLayout(el);
+
+    const parentRect = parent.getBoundingClientRect();
+    for (const marker of Array.from(
+      el.shadowRoot!.querySelectorAll<SVGTextElement>('[part="marker-text"]')
+    )) {
+      const rect = marker.getBoundingClientRect();
+      expect(rect.left).to.be.at.least(parentRect.left);
+      expect(rect.right).to.be.at.most(parentRect.right);
+    }
+    parent.remove();
   });
 
   it('generates year markers for long timelines', async () => {

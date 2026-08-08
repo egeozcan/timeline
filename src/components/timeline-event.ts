@@ -41,7 +41,7 @@ export class TimelineEvent extends LitElement {
   /**
    * The date of the event in YYYY-MM-DD format
    */
-  @property({ type: String })
+  @property({ type: String, reflect: true })
   date = '';
 
   /**

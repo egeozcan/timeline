@@ -217,7 +217,7 @@ describe('TimelineEvent', () => {
     expect(p?.textContent).to.equal('Slotted description');
   });
 
-  it('updates when date property changes', async () => {
+  it('reflects date property changes and updates rendered content', async () => {
     const el = await fixture<TimelineEvent>(html`
       <timeline-event date="2024-03-15">
         <h3>Test</h3>
@@ -228,6 +228,7 @@ describe('TimelineEvent', () => {
     await el.updateComplete;
 
     const date = el.shadowRoot!.querySelector('time');
+    expect(el.getAttribute('date')).to.equal('2025-06-20');
     expect(date?.textContent).to.contain('June 20, 2025');
   });
 

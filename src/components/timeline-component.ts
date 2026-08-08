@@ -16,6 +16,20 @@ interface DateRangeData {
   }[];
 }
 
+interface ManagedEventSnapshot {
+  role: string | null;
+  tabindex: string | null;
+  styles: Record<string, { value: string; priority: string }>;
+}
+
+const OWNED_EVENT_STYLE_PROPERTIES = [
+  'position',
+  'left',
+  'top',
+  'max-width',
+  'visibility',
+] as const;
+
 const EMPTY_SVG_DATA: SVGData = {
   axisPath: '',
   connectors: [],
@@ -88,9 +102,11 @@ export class TimelineComponent extends LitElement {
   private _eventMutationObserver = new MutationObserver(() => this._syncEvents());
   private _eventResizeObserver = new ResizeObserver(() => this._scheduleLayout());
   private _wrapperResizeObserver = new ResizeObserver(() => this._scheduleLayout());
+  private _observedWrapper?: HTMLElement;
   private _layoutScheduled = false;
   private _reorderingEvents = false;
   private _activeEventIndex = 0;
+  private readonly _eventSnapshots = new WeakMap<TimelineEvent, ManagedEventSnapshot>();
   private readonly _warnedRanges = new Set<string>();
   private readonly MIN_CONTENT_DIM = 1800;
 
@@ -110,6 +126,7 @@ export class TimelineComponent extends LitElement {
     this._eventMutationObserver.disconnect();
     this._eventResizeObserver.disconnect();
     this._wrapperResizeObserver.disconnect();
+    this._observedWrapper = undefined;
     this.removeEventListener('keydown', this._handleKeyDown);
     this.removeEventListener('focusin', this._handleFocusIn);
     if (this._layoutScheduled) {
@@ -140,11 +157,13 @@ export class TimelineComponent extends LitElement {
     if (!this.isConnected) {
       return;
     }
-    const wrapper = this.shadowRoot?.querySelector('.scroll-wrapper');
-    if (wrapper) {
-      this._wrapperResizeObserver.disconnect();
-      this._wrapperResizeObserver.observe(wrapper);
+    const wrapper = this.shadowRoot?.querySelector<HTMLElement>('.scroll-wrapper');
+    if (!wrapper || wrapper === this._observedWrapper) {
+      return;
     }
+    this._wrapperResizeObserver.disconnect();
+    this._wrapperResizeObserver.observe(wrapper);
+    this._observedWrapper = wrapper;
   }
 
   private _handleSlotChange = (): void => {
@@ -169,13 +188,8 @@ export class TimelineComponent extends LitElement {
     }
 
     const current = this._getDirectEvents();
-    const activeElement = document.activeElement;
-    const focused = this._events.find(
-      (event) =>
-        event === activeElement ||
-        (activeElement instanceof Node && event.contains(activeElement)) ||
-        (activeElement instanceof Node && event.shadowRoot?.contains(activeElement))
-    );
+    const activeElement = this._deepestActiveElement();
+    const focused = this._events.find((event) => this._composedContains(event, activeElement));
 
     for (const event of this._managedEvents) {
       if (!current.includes(event)) {
@@ -205,6 +219,7 @@ export class TimelineComponent extends LitElement {
     this._events = valid;
     this._managedEvents = ordered;
     for (const event of ordered) {
+      this._snapshotEvent(event);
       event.setAttribute('data-timeline-managed', '');
       if (!valid.includes(event)) {
         event.tabIndex = -1;
@@ -218,23 +233,84 @@ export class TimelineComponent extends LitElement {
 
     this._refreshEventAttributes();
     this._refreshRovingTabindex(focused);
+    if (
+      focused &&
+      activeElement instanceof HTMLElement &&
+      this._composedContains(focused, activeElement)
+    ) {
+      activeElement.focus({ preventScroll: true });
+    }
     this._scheduleLayout();
   }
 
+  private _deepestActiveElement(): Element | null {
+    let active: Element | null = document.activeElement;
+    while (active instanceof HTMLElement && active.shadowRoot?.activeElement) {
+      active = active.shadowRoot.activeElement;
+    }
+    return active;
+  }
+
+  private _composedContains(event: TimelineEvent, target: Element | null): boolean {
+    let current: Node | null = target;
+    while (current) {
+      if (current === event) {
+        return true;
+      }
+      const root = current.getRootNode();
+      current = current.parentNode ?? (root instanceof ShadowRoot ? root.host : null);
+    }
+    return false;
+  }
+
+  private _snapshotEvent(event: TimelineEvent): void {
+    if (this._eventSnapshots.has(event)) {
+      return;
+    }
+    const styles: ManagedEventSnapshot['styles'] = {};
+    for (const property of OWNED_EVENT_STYLE_PROPERTIES) {
+      styles[property] = {
+        value: event.style.getPropertyValue(property),
+        priority: event.style.getPropertyPriority(property),
+      };
+    }
+    this._eventSnapshots.set(event, {
+      role: event.getAttribute('role'),
+      tabindex: event.getAttribute('tabindex'),
+      styles,
+    });
+  }
+
   private _restoreStandaloneEvent(event: TimelineEvent): void {
+    const snapshot = this._eventSnapshots.get(event);
     event.removeAttribute('data-timeline-managed');
     event.removeAttribute('data-layout-mode');
     event.removeAttribute('data-layout-ready');
-    event.removeAttribute('role');
-    event.style.position = '';
-    event.style.left = '';
-    event.style.top = '';
-    event.style.maxWidth = '';
-    event.style.visibility = '';
+    if (!snapshot) {
+      return;
+    }
+    for (const [attribute, value] of [
+      ['role', snapshot.role],
+      ['tabindex', snapshot.tabindex],
+    ] as const) {
+      if (value === null) {
+        event.removeAttribute(attribute);
+      } else {
+        event.setAttribute(attribute, value);
+      }
+    }
+    for (const property of OWNED_EVENT_STYLE_PROPERTIES) {
+      const { value, priority } = snapshot.styles[property];
+      if (value) {
+        event.style.setProperty(property, value, priority);
+      } else {
+        event.style.removeProperty(property);
+      }
+    }
     if (!event.getAttribute('style')) {
       event.removeAttribute('style');
     }
-    event.tabIndex = 0;
+    this._eventSnapshots.delete(event);
   }
 
   private _mode(): 'horizontal' | 'vertical' | 'list' {
@@ -248,7 +324,12 @@ export class TimelineComponent extends LitElement {
       if (this.list) {
         event.setAttribute('role', 'listitem');
       } else {
-        event.removeAttribute('role');
+        const role = this._eventSnapshots.get(event)?.role;
+        if (role === null || role === undefined) {
+          event.removeAttribute('role');
+        } else {
+          event.setAttribute('role', role);
+        }
       }
     }
   }
@@ -513,12 +594,6 @@ export class TimelineComponent extends LitElement {
   }
 
   private _calculateVerticalLayout(container: HTMLElement): void {
-    const data = this._getDateRangeAndEvents();
-    if (!data) {
-      this._clearLayout(container);
-      return;
-    }
-
     const containerWidth = container.parentElement?.clientWidth || container.clientWidth;
     const mobile = containerWidth < 600;
     const availableMobileWidth = Math.max(0, containerWidth - 70);
@@ -528,37 +603,37 @@ export class TimelineComponent extends LitElement {
       }
     }
 
-    const measured = data.sortedEvents.map((event) => ({
-      ...event,
-      width: mobile ? Math.min(event.width, availableMobileWidth) : event.width,
-    }));
-    const maxCardHeight = Math.max(...measured.map((event) => event.height));
-    const margin = Math.max(60, maxCardHeight / 2 + 30);
-    const contentHeight = Math.max(this.MIN_CONTENT_DIM, margin * 2 + 1);
-    container.style.minHeight = `${contentHeight}px`;
+    // Apply responsive constraints before reading geometry so wrapped card heights are current.
+    const data = this._getDateRangeAndEvents();
+    if (!data) {
+      this._clearLayout(container);
+      return;
+    }
 
+    const maxCardHeight = Math.max(...data.sortedEvents.map((event) => event.height));
+    const margin = Math.max(60, maxCardHeight / 2 + 30);
+    const axisContentHeight = Math.max(this.MIN_CONTENT_DIM, margin * 2 + 1);
     const duration = data.endDate.getTime() - data.startDate.getTime();
     const dateToY = (date: string): number =>
       margin +
       ((this._timestamp(date) - data.startDate.getTime()) / duration) *
-        (contentHeight - 2 * margin);
+        (axisContentHeight - 2 * margin);
     const axisX = mobile ? 24 : containerWidth / 2;
     const gap =
       parseFloat(getComputedStyle(this).getPropertyValue('--timeline-v-column-gap')) || 100;
+    const sideBottom: Record<'left' | 'right', number> = { left: -30, right: -30 };
 
-    const layouts: EventLayout[] = measured.map((event, index) => {
+    const layouts: EventLayout[] = data.sortedEvents.map((event, index) => {
       const side: 'left' | 'right' = mobile || index % 2 === 1 ? 'right' : 'left';
       const x = mobile
         ? 54
         : side === 'left'
           ? Math.max(0, axisX - gap - event.width)
           : axisX + gap;
-      return {
-        ...event,
-        x,
-        y: Math.max(0, dateToY(event.date) - event.height / 2),
-        side,
-      };
+      const idealY = Math.max(0, dateToY(event.date) - event.height / 2);
+      const y = Math.max(idealY, sideBottom[side] + 30);
+      sideBottom[side] = y + event.height;
+      return { ...event, x, y, side };
     });
 
     const requiredWidth = Math.max(
@@ -568,16 +643,29 @@ export class TimelineComponent extends LitElement {
     if (requiredWidth > containerWidth) {
       container.style.minWidth = `${requiredWidth}px`;
     }
+    const contentHeight = Math.max(
+      axisContentHeight,
+      ...layouts.map((layout) => layout.y + layout.height + 30)
+    );
+    container.style.minHeight = `${contentHeight}px`;
 
     this._eventLayouts = layouts;
     this._svgData = {
-      axisPath: `M ${axisX},${margin} V ${contentHeight - margin}`,
-      connectors: layouts.map(
-        (layout) =>
-          `M ${layout.side === 'left' ? layout.x + layout.width : layout.x},${dateToY(layout.date)} H ${axisX}`
-      ),
+      axisPath: `M ${axisX},${margin} V ${axisContentHeight - margin}`,
+      connectors: layouts.map((layout) => {
+        const edgeX = layout.side === 'left' ? layout.x + layout.width : layout.x;
+        return `M ${edgeX},${layout.y + layout.height / 2} L ${axisX},${dateToY(layout.date)}`;
+      }),
       dots: layouts.map((layout) => ({ cx: axisX, cy: dateToY(layout.date) })),
-      markers: this._generateMarkers(data.startDate, data.endDate, duration, dateToY, axisX, true),
+      markers: this._generateMarkers(
+        data.startDate,
+        data.endDate,
+        duration,
+        dateToY,
+        axisX,
+        true,
+        mobile
+      ),
     };
     this._applyLayouts(layouts, false);
   }
@@ -598,7 +686,8 @@ export class TimelineComponent extends LitElement {
     totalDurationMs: number,
     posFunc: (date: string) => number,
     axisPos: number,
-    isVertical: boolean
+    isVertical: boolean,
+    placeVerticalTextRight = false
   ): MarkerData[] {
     const markers: MarkerData[] = [];
     const twoYearsInMs = 2 * 365.25 * 24 * 60 * 60 * 1000;
@@ -617,7 +706,12 @@ export class TimelineComponent extends LitElement {
         if (isVertical) {
           markers.push({
             line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
-            text: { content: text, x: axisPos - 20, y: pos + 4, anchor: 'end' },
+            text: {
+              content: text,
+              x: placeVerticalTextRight ? axisPos + 20 : axisPos - 20,
+              y: pos + 4,
+              anchor: placeVerticalTextRight ? 'start' : 'end',
+            },
           });
         } else {
           markers.push({
@@ -636,7 +730,12 @@ export class TimelineComponent extends LitElement {
         if (isVertical) {
           markers.push({
             line: { x1: axisPos - 10, y1: pos, x2: axisPos + 10, y2: pos },
-            text: { content: year, x: axisPos - 20, y: pos + 4, anchor: 'end' },
+            text: {
+              content: year,
+              x: placeVerticalTextRight ? axisPos + 20 : axisPos - 20,
+              y: pos + 4,
+              anchor: placeVerticalTextRight ? 'start' : 'end',
+            },
           });
         } else {
           markers.push({
