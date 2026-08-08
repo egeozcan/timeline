@@ -6,4 +6,4 @@ export { TimelineComponent } from './components/timeline-component.js';
 export type { TimelineEventData, EventLayout, SVGData, MarkerData } from './types/index.js';
 
 // Export utilities (for advanced users)
-export { formatDate, parseDate, createDate } from './utils/date-utils.js';
+export { createDate, formatDate, isValidDate, parseDate } from './utils/date-utils.js';

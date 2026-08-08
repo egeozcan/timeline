@@ -1,7 +1,7 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { timelineEventStyles } from '../styles/timeline-event.styles.js';
-import { formatDate } from '../utils/date-utils.js';
+import { formatDate, isValidDate } from '../utils/date-utils.js';
 
 /**
  * A timeline event card component that displays a single event with an optional image.
@@ -50,38 +50,62 @@ export class TimelineEvent extends LitElement {
   @property({ type: String, attribute: 'image-src' })
   imageSrc = '';
 
+  /**
+   * Alternative text for the event image. Empty text marks the image as decorative.
+   */
+  @property({ type: String, attribute: 'image-alt', reflect: true })
+  imageAlt = '';
+
+  private _contentObserver?: MutationObserver;
+  private readonly _warnedInvalidDates = new Set<string>();
+
   override connectedCallback(): void {
     super.connectedCallback();
-    // Set initial tabindex - will be managed by parent timeline-component for roving tabindex
     if (!this.hasAttribute('tabindex')) {
-      this.setAttribute('tabindex', '-1');
+      this.tabIndex = 0;
+    }
+
+    this._contentObserver ??= new MutationObserver(() => this.requestUpdate());
+    this._contentObserver.observe(this, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+
+  override disconnectedCallback(): void {
+    this._contentObserver?.disconnect();
+    super.disconnectedCallback();
+  }
+
+  protected override updated(changedProperties: PropertyValues<TimelineEvent>): void {
+    if (!changedProperties.has('date')) {
+      return;
+    }
+
+    const invalid = !isValidDate(this.date);
+    this.toggleAttribute('data-invalid-date', invalid);
+    if (invalid && !this._warnedInvalidDates.has(this.date)) {
+      this._warnedInvalidDates.add(this.date);
+      console.warn(`[timeline-event] Invalid date "${this.date}"; expected YYYY-MM-DD.`);
     }
   }
 
   override render() {
     const formattedDate = formatDate(this.date);
-    // Extract title from h3 element or create fallback title
     const h3Element = this.querySelector('h3');
-    const titleText = h3Element?.textContent || `Event on ${formattedDate}`;
+    const titleText = h3Element?.textContent?.trim() || `Event on ${formattedDate}`;
 
     return html`
-      <div class="card" part="card" role="article" aria-label="${titleText}">
-        <!-- Visually hidden date for screen readers -->
-        <span class="visually-hidden">Date: ${formattedDate}</span>
-
+      <div class="card" part="card" role="article" aria-label=${titleText}>
         ${this.imageSrc
-          ? html`<img src="${this.imageSrc}" alt="Image for ${titleText}" part="image" />`
-          : html`<div
-              class="image-placeholder"
-              role="img"
-              aria-label="Placeholder image for ${titleText}"
-              part="image-placeholder"
-            >
+          ? html`<img src=${this.imageSrc} alt=${this.imageAlt} part="image" />`
+          : html`<div class="image-placeholder" aria-hidden="true" part="image-placeholder">
               Timeline event for ${this.date}
             </div>`}
 
         <div class="content" part="content">
-          <time class="date-display" datetime="${this.date}" part="date"> ${formattedDate} </time>
+          <time class="date-display" datetime=${this.date} part="date">${formattedDate}</time>
           <slot></slot>
         </div>
       </div>

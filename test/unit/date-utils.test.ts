@@ -1,5 +1,5 @@
 import { expect } from '@open-wc/testing';
-import { formatDate, parseDate, createDate } from '../../dist/utils/date-utils.js';
+import { createDate, formatDate, isValidDate, parseDate } from '../../dist/utils/date-utils.js';
 
 describe('date-utils', () => {
   describe('formatDate', () => {
@@ -18,6 +18,26 @@ describe('date-utils', () => {
     it('handles edge dates correctly', () => {
       expect(formatDate('2024-01-01')).to.equal('January 1, 2024');
       expect(formatDate('2024-12-31')).to.equal('December 31, 2024');
+    });
+
+    it('keeps canonical input on the same calendar day in UTC', () => {
+      expect(formatDate('2024-03-15')).to.equal('March 15, 2024');
+    });
+  });
+
+  describe('isValidDate', () => {
+    it('accepts only canonical calendar dates', () => {
+      expect(isValidDate('2024-02-29')).to.be.true;
+      expect(isValidDate('2023-02-29')).to.be.false;
+      expect(isValidDate('2024-02-30')).to.be.false;
+      expect(isValidDate('2024-2-09')).to.be.false;
+      expect(isValidDate('')).to.be.false;
+    });
+
+    it('returns stable invalid values instead of normalized dates', () => {
+      expect(formatDate('2024-02-30')).to.equal('');
+      expect(Number.isNaN(parseDate('2024-02-30'))).to.be.true;
+      expect(Number.isNaN(createDate('2024-02-30').getTime())).to.be.true;
     });
   });
 

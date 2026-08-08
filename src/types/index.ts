@@ -1,6 +1,7 @@
 export interface TimelineEventData {
   date: string;
   imageSrc?: string;
+  imageAlt?: string;
   title?: string;
   description?: string;
 }
