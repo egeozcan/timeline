@@ -1,4 +1,5 @@
 import { expect } from '@open-wc/testing';
+import * as packageRoot from '../../dist/index.js';
 import { createDate, formatDate, isValidDate, parseDate } from '../../dist/utils/date-utils.js';
 
 describe('date-utils', () => {
@@ -20,12 +21,40 @@ describe('date-utils', () => {
       expect(formatDate('2024-12-31')).to.equal('December 31, 2024');
     });
 
-    it('keeps canonical input on the same calendar day in UTC', () => {
-      expect(formatDate('2024-03-15')).to.equal('March 15, 2024');
+    it('passes UTC to locale formatting and restores the patched method', () => {
+      const originalToLocaleDateString = Date.prototype.toLocaleDateString;
+      let receivedLocales: Intl.LocalesArgument | undefined;
+      let receivedOptions: Intl.DateTimeFormatOptions | undefined;
+
+      try {
+        Date.prototype.toLocaleDateString = (locales, options) => {
+          receivedLocales = locales;
+          receivedOptions = options;
+          return 'UTC-formatted date';
+        };
+
+        expect(formatDate('2024-03-15')).to.equal('UTC-formatted date');
+        expect(receivedLocales).to.equal('en-US');
+        expect(receivedOptions).to.deep.include({
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'UTC',
+        });
+      } finally {
+        Date.prototype.toLocaleDateString = originalToLocaleDateString;
+      }
+
+      expect(Date.prototype.toLocaleDateString).to.equal(originalToLocaleDateString);
     });
   });
 
   describe('isValidDate', () => {
+    it('is exported from the package root', () => {
+      expect(packageRoot.isValidDate).to.equal(isValidDate);
+      expect(packageRoot.isValidDate('2024-02-29')).to.be.true;
+    });
+
     it('accepts only canonical calendar dates', () => {
       expect(isValidDate('2024-02-29')).to.be.true;
       expect(isValidDate('2023-02-29')).to.be.false;
