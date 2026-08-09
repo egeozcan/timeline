@@ -755,10 +755,105 @@ describe('TimelineComponent', () => {
     expect(wrapper.getAttribute('aria-label')).to.equal('Timeline');
     expect(wrapper.getAttribute('tabindex')).to.equal('0');
     expect(el.shadowRoot!.querySelector('slot')!.getAttribute('role')).to.equal('presentation');
+    // The container sits between the list and its items, so it must not occupy the a11y tree.
+    expect(el.shadowRoot!.querySelector('.timeline-container')!.getAttribute('role')).to.equal(
+      'presentation'
+    );
     for (const event of Array.from(el.children)) {
       expect(event.getAttribute('role')).to.equal('listitem');
       expect(event.getAttribute('data-layout-mode')).to.equal('list');
     }
+  });
+
+  it('leaves the container out of the a11y tree only in list mode', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-03-15"><h3>First</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    expect(el.shadowRoot!.querySelector('.timeline-container')!.hasAttribute('role')).to.be.false;
+  });
+
+  for (const mode of ['list', 'vertical'] as const) {
+    it(`keeps the author role when a ${mode} update lands before slotchange`, async () => {
+      const el = await fixture<TimelineComponent>(html`<timeline-component></timeline-component>`);
+      await settleLayout(el);
+
+      const event = document.createElement('timeline-event');
+      event.setAttribute('date', '2024-06-15');
+      event.setAttribute('role', 'note');
+
+      // Assigning a property queues Lit's update microtask ahead of the slotchange microtask,
+      // so `_refreshEventAttributes` sees the event before `_syncEvents` has snapshotted it.
+      el[mode] = true;
+      el.append(event);
+      await settleLayout(el);
+
+      el[mode] = false;
+      await settleLayout(el);
+      event.remove();
+      await settleLayout(el);
+
+      expect(event.getAttribute('role')).to.equal('note');
+    });
+  }
+
+  it('clears the reorder guard so later slot changes still resync', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2024-09-15"><h3>Late</h3></timeline-event>
+        <timeline-event date="2024-03-15"><h3>Early</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+    // The initial sync reorders the light DOM; a subsequent append must still be picked up.
+    expect(Array.from(el.children).map((child) => child.getAttribute('date'))).to.deep.equal([
+      '2024-03-15',
+      '2024-09-15',
+    ]);
+
+    const event = document.createElement('timeline-event');
+    event.setAttribute('date', '2024-06-15');
+    el.append(event);
+    await settleLayout(el);
+
+    expect(Array.from(el.children).map((child) => child.getAttribute('date'))).to.deep.equal([
+      '2024-03-15',
+      '2024-06-15',
+      '2024-09-15',
+    ]);
+    expect(event.hasAttribute('data-timeline-managed')).to.be.true;
+  });
+
+  it('falls back to yearly markers when a span straddles no multiple of five', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="2021-06-15"><h3>First</h3></timeline-event>
+        <timeline-event date="2023-06-15"><h3>Second</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+
+    const labels = Array.from(el.shadowRoot!.querySelectorAll('[part="marker-text"]')).map(
+      (text) => text.textContent
+    );
+    expect(labels).to.deep.equal(['2021', '2022', '2023']);
+  });
+
+  it('keeps the five-year step for long spans', async () => {
+    const el = await fixture<TimelineComponent>(html`
+      <timeline-component>
+        <timeline-event date="1972-08-13"><h3>First</h3></timeline-event>
+        <timeline-event date="2001-04-21"><h3>Second</h3></timeline-event>
+      </timeline-component>
+    `);
+    await settleLayout(el);
+
+    const labels = Array.from(el.shadowRoot!.querySelectorAll('[part="marker-text"]')).map(
+      (text) => text.textContent
+    );
+    expect(labels).to.deep.equal(['1975', '1980', '1985', '1990', '1995', '2000']);
   });
 
   it('becomes quiescent after layout and does not continuously update', async () => {

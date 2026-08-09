@@ -414,7 +414,45 @@ test.describe('@accessibility Accessibility Tests', () => {
       const event = page.locator('timeline-event');
       await waitForEventReady(event);
 
-      await expect(event.locator('.card')).toHaveRole('article');
+      // The article role lives on the host via ElementInternals, so the element that receives
+      // focus is the one carrying the semantics. The inner card must not duplicate the role.
+      await expect(event.locator('.card')).not.toHaveAttribute('role');
+      await event.focus();
+      await expect(event).toBeFocused();
+    });
+
+    test('the focused event is the node exposing article semantics', async ({
+      page,
+      browserName,
+    }) => {
+      // ElementInternals roles are invisible to Playwright's own ARIA engine, so this reads the
+      // browser's real accessibility tree. CDP is Chromium-only.
+      test.skip(browserName !== 'chromium', 'requires the Chrome DevTools Protocol');
+
+      await page.goto('/iframe.html?id=components-timelineevent--with-image&viewMode=story');
+      const event = page.locator('timeline-event');
+      await waitForEventReady(event);
+
+      const client = await page.context().newCDPSession(page);
+      const { nodes } = (await client.send('Accessibility.getFullAXTree')) as unknown as {
+        nodes: {
+          role?: { value?: string };
+          name?: { value?: string };
+          properties?: { name: string; value?: { value?: unknown } }[];
+        }[];
+      };
+      const focusable = nodes
+        .filter((node) => node.role?.value !== 'RootWebArea')
+        .find((node) =>
+          node.properties?.some(
+            (property) => property.name === 'focusable' && property.value?.value === true
+          )
+        );
+
+      expect(focusable?.role?.value).toBe('article');
+      expect(focusable?.name?.value).toBe('Design Mockups Approved');
+      // The role must appear exactly once — not on both the host and the inner card.
+      expect(nodes.filter((node) => node.role?.value === 'article')).toHaveLength(1);
     });
 
     test('SVG decorations are hidden from screen readers', async ({ page }) => {

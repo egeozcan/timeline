@@ -1,8 +1,8 @@
-import { LitElement, html, svg, type PropertyValues } from 'lit';
+import { LitElement, html, nothing, svg, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { timelineComponentStyles } from '../styles/timeline-component.styles.js';
 import type { EventLayout, SVGData, MarkerData } from '../types/index.js';
-import { isValidDate } from '../utils/date-utils.js';
+import { createUtcDate, isValidDate, parseDate } from '../utils/date-utils.js';
 import type { TimelineEvent } from './timeline-event.js';
 
 interface DateRangeData {
@@ -35,12 +35,19 @@ const OWNED_EVENT_STYLE_PROPERTIES = [
   'visibility',
 ] as const;
 
-const EMPTY_SVG_DATA: SVGData = {
+/** Fresh empty layout data. A factory so callers never share the same arrays. */
+const emptySvgData = (): SVGData => ({
   axisPath: '',
   connectors: [],
   dots: [],
   markers: [],
-};
+});
+
+/** Smallest axis length, in px, before the timeline starts scrolling. */
+const MIN_CONTENT_DIM = 1800;
+
+/** Default dot radius when `--timeline-dot-size` is unset. */
+const DEFAULT_DOT_RADIUS = '5';
 
 /**
  * A timeline container component that positions events chronologically.
@@ -100,20 +107,38 @@ export class TimelineComponent extends LitElement {
   private _eventLayouts: EventLayout[] = [];
 
   @state()
-  private _svgData: SVGData = EMPTY_SVG_DATA;
+  private _svgData: SVGData = emptySvgData();
+
+  @state()
+  private _dotRadius = DEFAULT_DOT_RADIUS;
 
   private _events: TimelineEvent[] = [];
   private _managedEvents: TimelineEvent[] = [];
-  private _eventMutationObserver = new MutationObserver(() => this._syncEvents());
-  private _eventResizeObserver = new ResizeObserver(() => this._scheduleLayout());
-  private _wrapperResizeObserver = new ResizeObserver(() => this._scheduleLayout());
+  // Constructed lazily: the observer globals do not exist when the module is evaluated
+  // under SSR, and connecting is the earliest point they are actually needed.
+  private _eventMutationObserverInstance?: MutationObserver;
+  private _eventResizeObserverInstance?: ResizeObserver;
+  private _wrapperResizeObserverInstance?: ResizeObserver;
   private _observedWrapper?: HTMLElement;
   private _layoutScheduled = false;
   private _reorderingEvents = false;
   private _activeEventIndex = 0;
   private readonly _eventSnapshots = new WeakMap<TimelineEvent, ManagedEventSnapshot>();
   private readonly _warnedRanges = new Set<string>();
-  private readonly MIN_CONTENT_DIM = 1800;
+
+  private get _eventMutationObserver(): MutationObserver {
+    return (this._eventMutationObserverInstance ??= new MutationObserver(() => this._syncEvents()));
+  }
+
+  private get _eventResizeObserver(): ResizeObserver {
+    return (this._eventResizeObserverInstance ??= new ResizeObserver(() => this._scheduleLayout()));
+  }
+
+  private get _wrapperResizeObserver(): ResizeObserver {
+    return (this._wrapperResizeObserverInstance ??= new ResizeObserver(() =>
+      this._scheduleLayout()
+    ));
+  }
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -128,9 +153,9 @@ export class TimelineComponent extends LitElement {
   }
 
   override disconnectedCallback(): void {
-    this._eventMutationObserver.disconnect();
-    this._eventResizeObserver.disconnect();
-    this._wrapperResizeObserver.disconnect();
+    this._eventMutationObserverInstance?.disconnect();
+    this._eventResizeObserverInstance?.disconnect();
+    this._wrapperResizeObserverInstance?.disconnect();
     this._observedWrapper = undefined;
     this.removeEventListener('keydown', this._handleKeyDown);
     this.removeEventListener('focusin', this._handleFocusIn);
@@ -213,7 +238,7 @@ export class TimelineComponent extends LitElement {
 
     const valid = current
       .filter((event) => isValidDate(event.date))
-      .sort((a, b) => this._timestamp(a.date) - this._timestamp(b.date));
+      .sort((a, b) => parseDate(a.date) - parseDate(b.date));
     const invalid = current.filter((event) => !isValidDate(event.date));
     const ordered = [...valid, ...invalid];
 
@@ -331,6 +356,10 @@ export class TimelineComponent extends LitElement {
   private _refreshEventAttributes(): void {
     const mode = this._mode();
     for (const event of this._getDirectEvents()) {
+      // Snapshot before the first mutation. A property update can drive this method from
+      // `updated()` before the pending `slotchange` reaches `_syncEvents()`, and without this
+      // the snapshot would later capture our own `role` as if the author had written it.
+      this._snapshotEvent(event);
       event.setAttribute('data-layout-mode', mode);
       if (this.list) {
         event.setAttribute('role', 'listitem');
@@ -469,7 +498,7 @@ export class TimelineComponent extends LitElement {
       container.style.height = '';
     }
     this._eventLayouts = [];
-    this._svgData = { ...EMPTY_SVG_DATA };
+    this._svgData = emptySvgData();
     for (const event of this._getDirectEvents()) {
       event.removeAttribute('data-layout-ready');
     }
@@ -481,6 +510,9 @@ export class TimelineComponent extends LitElement {
       return;
     }
     this._refreshEventAttributes();
+    // Resolved here rather than in render() so a template pass never forces a style recalc.
+    this._dotRadius =
+      getComputedStyle(this).getPropertyValue('--timeline-dot-size').trim() || DEFAULT_DOT_RADIUS;
 
     if (this._events.length === 0) {
       this._clearLayout(container);
@@ -499,7 +531,7 @@ export class TimelineComponent extends LitElement {
   private _calculateListLayout(container: HTMLElement): void {
     const layouts = this._measuredEvents();
     this._eventLayouts = layouts.map((event) => ({ ...event, x: 0, y: 0 }));
-    this._svgData = { ...EMPTY_SVG_DATA };
+    this._svgData = emptySvgData();
     for (const event of this._events) {
       event.style.position = 'relative';
       event.style.visibility = 'visible';
@@ -515,17 +547,6 @@ export class TimelineComponent extends LitElement {
       width: el.offsetWidth,
       height: el.offsetHeight,
     }));
-  }
-
-  private _timestamp(date: string): number {
-    return new Date(`${date}T12:00:00Z`).getTime();
-  }
-
-  private _utcDate(year: number, month: number, day: number): Date {
-    const date = new Date(0);
-    date.setUTCHours(12, 0, 0, 0);
-    date.setUTCFullYear(year, month, day);
-    return date;
   }
 
   private _warnRange(warning: string): void {
@@ -560,24 +581,24 @@ export class TimelineComponent extends LitElement {
       return null;
     }
 
-    const timestamps = sortedEvents.map((event) => this._timestamp(event.date));
+    const timestamps = sortedEvents.map((event) => parseDate(event.date));
     const minDate = new Date(Math.min(...timestamps));
     const maxDate = new Date(Math.max(...timestamps));
 
-    let startDate = this._utcDate(minDate.getUTCFullYear(), minDate.getUTCMonth() - 2, 1);
-    let endDate = this._utcDate(maxDate.getUTCFullYear(), maxDate.getUTCMonth() + 3, 0);
+    let startDate = createUtcDate(minDate.getUTCFullYear(), minDate.getUTCMonth() - 2, 1);
+    let endDate = createUtcDate(maxDate.getUTCFullYear(), maxDate.getUTCMonth() + 3, 0);
     if (startDate.getUTCFullYear() < 1) {
-      startDate = this._utcDate(1, 0, 1);
+      startDate = createUtcDate(1, 0, 1);
     }
     if (endDate.getUTCFullYear() > 9999) {
-      endDate = this._utcDate(9999, 11, 31);
+      endDate = createUtcDate(9999, 11, 31);
     }
 
     if (this.startYear !== undefined && this.startYear !== null) {
-      startDate = this._utcDate(this.startYear, 0, 1);
+      startDate = createUtcDate(this.startYear, 0, 1);
     }
     if (this.endYear !== undefined && this.endYear !== null) {
-      endDate = this._utcDate(this.endYear, 11, 31);
+      endDate = createUtcDate(this.endYear, 11, 31);
     }
 
     if (startDate.getTime() > endDate.getTime()) {
@@ -600,13 +621,13 @@ export class TimelineComponent extends LitElement {
     const maxCardWidth = Math.max(...data.sortedEvents.map((event) => event.width));
     const margin = Math.max(60, maxCardWidth / 2 + 30);
     const wrapperWidth = container.parentElement?.clientWidth || container.clientWidth;
-    const contentWidth = Math.max(wrapperWidth, this.MIN_CONTENT_DIM, margin * 2 + 1);
+    const contentWidth = Math.max(wrapperWidth, MIN_CONTENT_DIM, margin * 2 + 1);
     container.style.minWidth = `${contentWidth}px`;
 
     const duration = data.endDate.getTime() - data.startDate.getTime();
     const dateToX = (date: string): number =>
       margin +
-      ((this._timestamp(date) - data.startDate.getTime()) / duration) * (contentWidth - 2 * margin);
+      ((parseDate(date) - data.startDate.getTime()) / duration) * (contentWidth - 2 * margin);
 
     const rowEnds: number[] = [];
     const rowHeights: number[] = [];
@@ -684,12 +705,11 @@ export class TimelineComponent extends LitElement {
 
     const maxCardHeight = Math.max(...data.sortedEvents.map((event) => event.height));
     const margin = Math.max(60, maxCardHeight / 2 + 30);
-    const axisContentHeight = Math.max(this.MIN_CONTENT_DIM, margin * 2 + 1);
+    const axisContentHeight = Math.max(MIN_CONTENT_DIM, margin * 2 + 1);
     const duration = data.endDate.getTime() - data.startDate.getTime();
     const dateToY = (date: string): number =>
       margin +
-      ((this._timestamp(date) - data.startDate.getTime()) / duration) *
-        (axisContentHeight - 2 * margin);
+      ((parseDate(date) - data.startDate.getTime()) / duration) * (axisContentHeight - 2 * margin);
     const gap =
       parseFloat(getComputedStyle(this).getPropertyValue('--timeline-v-column-gap')) || 100;
     const leftCardWidth = mobile
@@ -766,7 +786,7 @@ export class TimelineComponent extends LitElement {
     const twoYearsInMs = 2 * 365.25 * 24 * 60 * 60 * 1000;
 
     if (totalDurationMs <= twoYearsInMs) {
-      const currentMonth = this._utcDate(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1);
+      const currentMonth = createUtcDate(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1);
       while (currentMonth <= endDate) {
         entries.push({
           date: currentMonth.toISOString().slice(0, 10),
@@ -779,8 +799,13 @@ export class TimelineComponent extends LitElement {
         currentMonth.setUTCMonth(currentMonth.getUTCMonth() + 1);
       }
     } else {
-      for (let year = startDate.getUTCFullYear(); year <= endDate.getUTCFullYear(); year++) {
-        if (year % 5 === 0) {
+      const firstYear = startDate.getUTCFullYear();
+      const lastYear = endDate.getUTCFullYear();
+      // Every fifth year keeps long timelines readable, but a short span that straddles no
+      // multiple of five (2021-2023, say) would otherwise render an axis with no labels at all.
+      const step = Math.floor(lastYear / 5) * 5 >= Math.ceil(firstYear / 5) * 5 ? 5 : 1;
+      for (let year = firstYear; year <= lastYear; year++) {
+        if (year % step === 0) {
           const paddedYear = String(year).padStart(4, '0');
           entries.push({ date: `${paddedYear}-01-01`, content: paddedYear });
         }
@@ -832,7 +857,6 @@ export class TimelineComponent extends LitElement {
   }
 
   override render() {
-    const dotRadius = getComputedStyle(this).getPropertyValue('--timeline-dot-size') || '5';
     return html`
       <div
         class="scroll-wrapper${this.list ? ' list-mode' : ''}"
@@ -844,6 +868,7 @@ export class TimelineComponent extends LitElement {
         <div
           class="timeline-container${this.list ? ' list-view' : ''}"
           part="container"
+          role=${this.list ? 'presentation' : nothing}
           data-layout-mode=${this._mode()}
           data-layout-ready=${this._eventLayouts.length > 0 ? 'true' : 'false'}
         >
@@ -896,7 +921,7 @@ export class TimelineComponent extends LitElement {
                   (dot) => svg`<circle
                     cx=${dot.cx}
                     cy=${dot.cy}
-                    r=${dotRadius}
+                    r=${this._dotRadius}
                     fill="var(--timeline-dot-color, #ff6b6b)"
                     part="dot"
                   ></circle>`

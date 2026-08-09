@@ -156,6 +156,12 @@ Individual event cards displayed on the timeline.
 
 A standalone `<timeline-event>` is visible, relatively positioned, and keyboard focusable. When it is a direct child of `<timeline-component>`, the parent takes over its positioning and roving tabindex. Images are decorative by default; set `image-alt` only when the image conveys content not already present in the event text. Placeholder artwork is always decorative.
 
+### Child ordering
+
+`<timeline-component>` owns the order of its direct children: it re-appends them into chronological order so that reading order matches visual order, and moves events with an unparseable `date` to the end. Author-supplied `role`, `tabindex`, and the inline styles it manages (`position`, `left`, `top`, `max-width`, `visibility`) are captured before the takeover and restored when the event leaves the timeline.
+
+If a framework renders the events, give it a stable keyed list and let it own the data order — sort your event data chronologically before rendering. A framework that reconciles against unkeyed children may otherwise fight the reordering and duplicate or drop nodes.
+
 ## Styling
 
 The components include structural layout styles and usable default card colors, borders, radius, shadow, and typography. Customize those defaults with CSS custom properties and parts, or apply a pre-built theme for a coordinated appearance.
@@ -375,7 +381,7 @@ The timeline component is designed with accessibility in mind, following WCAG 2.
 ### ARIA Support
 
 - Axis timelines expose a `role="region"`; list mode exposes a labelled `role="list"`. Omitted or empty labels fall back to `Timeline`
-- Event cards have descriptive `role="article"` content, while list-mode hosts are list items
+- Each `<timeline-event>` host exposes `role="article"` with the slotted heading as its accessible name, so the element that receives focus is the one carrying the semantics; in list mode the host becomes a list item instead
 - Each event has one date: visually hidden in axis modes and visibly rendered in list mode
 - SVG decorations are hidden from assistive technology (`aria-hidden="true"`)
 

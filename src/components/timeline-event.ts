@@ -59,6 +59,11 @@ export class TimelineEvent extends LitElement {
 
   private _contentObserver?: MutationObserver;
   private readonly _warnedInvalidDates = new Set<string>();
+  // The host is the focus target, so the article role and its label belong here rather than on
+  // the inner card. ElementInternals supplies them as *defaults*, which an author-supplied
+  // `role` attribute (or the parent's `listitem`) still overrides. Optional because
+  // attachInternals predates Safari 16.4; on older engines the card simply has no role.
+  private readonly _internals = this.attachInternals?.();
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -80,6 +85,11 @@ export class TimelineEvent extends LitElement {
   }
 
   protected override updated(changedProperties: PropertyValues<TimelineEvent>): void {
+    if (this._internals) {
+      this._internals.role = 'article';
+      this._internals.ariaLabel = this._titleText();
+    }
+
     if (!changedProperties.has('date')) {
       return;
     }
@@ -92,13 +102,17 @@ export class TimelineEvent extends LitElement {
     }
   }
 
+  /** Accessible name for the card: the slotted heading, or a date-derived fallback. */
+  private _titleText(): string {
+    const heading = this.querySelector('h3')?.textContent?.trim();
+    return heading || `Event on ${formatDate(this.date)}`;
+  }
+
   override render() {
     const formattedDate = formatDate(this.date);
-    const h3Element = this.querySelector('h3');
-    const titleText = h3Element?.textContent?.trim() || `Event on ${formattedDate}`;
 
     return html`
-      <div class="card" part="card" role="article" aria-label=${titleText}>
+      <div class="card" part="card">
         ${this.imageSrc
           ? html`<img src=${this.imageSrc} alt=${this.imageAlt} part="image" />`
           : html`<div class="image-placeholder" aria-hidden="true" part="image-placeholder">

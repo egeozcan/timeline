@@ -150,9 +150,11 @@ describe('TimelineEvent', () => {
       </timeline-event>
     `);
 
-    const card = el.shadowRoot!.querySelector('.card');
-    expect(card?.getAttribute('role')).to.equal('article');
-    expect(card?.getAttribute('aria-label')).to.include('My Event Title');
+    // Role and name live on the host, which is the focus target.
+    const internals = (el as unknown as { _internals: ElementInternals })._internals;
+    expect(internals.role).to.equal('article');
+    expect(internals.ariaLabel).to.include('My Event Title');
+    expect(el.shadowRoot!.querySelector('.card')?.hasAttribute('role')).to.be.false;
   });
 
   it('renders one visually hidden date that becomes visible in list mode', async () => {
@@ -178,8 +180,8 @@ describe('TimelineEvent', () => {
       </timeline-event>
     `);
 
-    const card = el.shadowRoot!.querySelector('.card');
-    expect(card?.getAttribute('aria-label')).to.contain('Event on March 15, 2024');
+    const internals = (el as unknown as { _internals: ElementInternals })._internals;
+    expect(internals.ariaLabel).to.contain('Event on March 15, 2024');
   });
 
   it('exposes parts for styling', async () => {
@@ -302,9 +304,8 @@ describe('TimelineEvent', () => {
     el.querySelector('h3')!.textContent = 'After';
     await nextFrame();
 
-    expect(el.shadowRoot!.querySelector('[role="article"]')!.getAttribute('aria-label')).to.equal(
-      'After'
-    );
+    const internals = (el as unknown as { _internals: ElementInternals })._internals;
+    expect(internals.ariaLabel).to.equal('After');
   });
 
   it('marks a missing date invalid, warns, and recovers when assigned a valid date', async () => {

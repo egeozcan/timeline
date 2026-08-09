@@ -31,8 +31,5 @@ jobs:
       - name: Validate package
         run: npm run ci
 
-      - name: Build Storybook
-        run: npm run build-storybook
-
       - name: Publish to npm
         run: npm publish --provenance --access public

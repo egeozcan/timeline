@@ -1,6 +1,20 @@
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**
+ * Build a UTC-noon Date from calendar parts, without the two-digit-year remapping
+ * that the `new Date(year, ...)` constructor applies to years below 100.
+ * @param year - Full calendar year
+ * @param monthIndex - Zero-based month; values outside 0-11 roll over
+ * @param day - Day of month; values outside the month roll over
+ */
+export function createUtcDate(year: number, monthIndex: number, day: number): Date {
+  const date = new Date(0);
+  date.setUTCHours(12, 0, 0, 0);
+  date.setUTCFullYear(year, monthIndex, day);
+  return date;
+}
+
+/**
  * Check whether a date string is a canonical calendar date.
  * @param dateString - Date in YYYY-MM-DD format
  */
@@ -18,9 +32,7 @@ export function isValidDate(dateString: string): boolean {
     return false;
   }
 
-  const date = new Date(0);
-  date.setUTCHours(12, 0, 0, 0);
-  date.setUTCFullYear(year, month - 1, day);
+  const date = createUtcDate(year, month - 1, day);
 
   return (
     date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
