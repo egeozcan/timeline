@@ -1,6 +1,6 @@
 {
   "name": "lit-timeline",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "A customizable timeline component built with Lit for displaying chronological events",
   "author": "egecan",
   "repository": {
