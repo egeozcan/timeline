@@ -22,6 +22,11 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
+      # Node 20 bundles npm 10, which predates OIDC trusted publishing (npm 11.5.1+).
+      # Without this the publish step falls back to needing a token and fails.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: npm ci
 
