@@ -18,14 +18,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
+          # Node 24 bundles npm 11, which is the floor for OIDC trusted publishing (11.5.1+).
           node-version: '24'
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
-
-      # OIDC trusted publishing needs npm 11.5.1+. Node 24 bundles npm 11, but pin to the
-      # current release so the publish step never silently falls back to needing a token.
-      - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci

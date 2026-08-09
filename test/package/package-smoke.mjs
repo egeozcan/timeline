@@ -7,10 +7,13 @@ import test from 'node:test';
 const packOutput = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
   encoding: 'utf8',
 });
+// npm 11 and earlier report an array of tarball descriptors; npm 12 reports a bare object.
 const packResult = JSON.parse(packOutput);
-assert.equal(packResult.length, 1, 'npm pack should describe exactly one tarball');
+const tarballs = Array.isArray(packResult) ? packResult : [packResult];
+assert.equal(tarballs.length, 1, 'npm pack should describe exactly one tarball');
+assert.ok(Array.isArray(tarballs[0]?.files), 'npm pack should list the packed files');
 
-const packedFiles = new Set(packResult[0].files.map(({ path }) => path));
+const packedFiles = new Set(tarballs[0].files.map(({ path }) => path));
 
 const requiredFiles = [
   'dist/index.js',
